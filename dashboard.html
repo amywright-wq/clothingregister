@@ -80,6 +80,8 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
 .badge-available { background: var(--green-lt); color: var(--green); }
 .badge-sold      { background: var(--blue-lt); color: #2a5a9a; }
 .badge-returned  { background: var(--red-lt);  color: var(--red); }
+.badge-received  { background: #FFF3E0; color: #C75B00; }
+.badge-tagged    { background: var(--green-lt); color: var(--green); }
 
 /* MODAL OVERLAY */
 .overlay { position: fixed; inset: 0; background: rgba(59,42,26,.45); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -187,17 +189,11 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
         <input type="date" id="sfDateTo" onchange="applySummaryFilters()">
       </div>
       <div class="sf-group">
-        <label>Category</label>
+        <label>Rack Status</label>
         <select id="sfCategory" onchange="applySummaryFilters()">
-          <option value="">All Categories</option>
-          <option>Dress</option>
-          <option>Top</option>
-          <option>Pants</option>
-          <option>Skirt</option>
-          <option>Jacket / Coat</option>
-          <option>Shoes</option>
-          <option>Bag / Accessories</option>
-          <option>Other</option>
+          <option value="">All Rack Statuses</option>
+          <option>Received</option>
+          <option>Tagged</option>
         </select>
       </div>
       <div class="sf-group">
@@ -226,7 +222,7 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
         <div id="chartStatusWrap"><canvas id="chartStatus"></canvas></div>
       </div>
       <div class="chart-card">
-        <h3>Revenue by Category</h3>
+        <h3>Revenue by Supplier</h3>
         <div id="chartCategoryWrap"><canvas id="chartCategory"></canvas></div>
       </div>
     </div>
@@ -254,15 +250,9 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
       <option>Returned</option>
     </select>
     <select id="filterCategory" onchange="applyFilters()">
-      <option value="">All Categories</option>
-      <option>Dress</option>
-      <option>Top</option>
-      <option>Pants</option>
-      <option>Skirt</option>
-      <option>Jacket / Coat</option>
-      <option>Shoes</option>
-      <option>Bag / Accessories</option>
-      <option>Other</option>
+      <option value="">All Rack Statuses</option>
+      <option>Received</option>
+      <option>Tagged</option>
     </select>
     <button class="btn btn-outline" onclick="clearFilters()">Clear Filters</button>
     <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
@@ -297,7 +287,7 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
           <th onclick="sortBy('code')">Item Code <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('name')">Name / Description <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('size')">Size <span class="sort-icon">↕</span></th>
-          <th onclick="sortBy('category')">Category <span class="sort-icon">↕</span></th>
+          <th onclick="sortBy('category')">Rack Status <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('owner')">Supplier / Owner <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('dateAdded')">Date Added <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('status')">Status <span class="sort-icon">↕</span></th>
@@ -326,7 +316,7 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
       <div class="form-row">
         <div class="form-field">
           <label>Item Code *</label>
-          <input type="text" id="fCode" placeholder="Auto-generated on category select" maxlength="20">
+          <input type="text" id="fCode" placeholder="Auto-generated" maxlength="20">
         </div>
         <div class="form-field full">
           <label>Name / Description *</label>
@@ -339,17 +329,11 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
           <input type="text" id="fSize" placeholder="e.g. S, M, 10, 32W">
         </div>
         <div class="form-field">
-          <label>Category</label>
-          <select id="fCategory" onchange="onCategoryChange()">
+          <label>Rack Status</label>
+          <select id="fCategory">
             <option value="">— select —</option>
-            <option>Dress</option>
-            <option>Top</option>
-            <option>Pants</option>
-            <option>Skirt</option>
-            <option>Jacket / Coat</option>
-            <option>Shoes</option>
-            <option>Bag / Accessories</option>
-            <option>Other</option>
+            <option>Received</option>
+            <option>Tagged</option>
           </select>
         </div>
         <div class="form-field">
@@ -486,32 +470,13 @@ async function load() {
 function setLoading(on) { isLoading = on; }
 
 // ── UNIQUE CODE GENERATOR ─────────────────────────────────────────────────────
-const CATEGORY_PREFIX = {
-  'Dress':             'DR',
-  'Top':               'TP',
-  'Pants':             'PT',
-  'Skirt':             'SK',
-  'Jacket / Coat':     'JK',
-  'Shoes':             'SH',
-  'Bag / Accessories': 'BA',
-  'Other':             'OT',
-};
-
-function nextCode(category) {
-  const prefix = CATEGORY_PREFIX[category] || 'IT';
-  const pattern = new RegExp('^' + prefix + '-(\\d+)$');
+function nextCode() {
+  const pattern = /^BOR-(\d+)$/;
   const nums = items
     .map(i => { const m = (i.code||'').match(pattern); return m ? parseInt(m[1]) : 0; })
     .filter(n => n > 0);
   const n = (nums.length ? Math.max(...nums) : 0) + 1;
-  return prefix + '-' + String(n).padStart(3, '0');
-}
-
-// Called when category dropdown changes while adding a new item
-function onCategoryChange() {
-  if (editId) return; // don't overwrite existing item codes
-  const cat = document.getElementById('fCategory').value;
-  document.getElementById('fCode').value = cat ? nextCode(cat) : '';
+  return 'BOR-' + String(n).padStart(3, '0');
 }
 
 // ── CALCULATIONS ──────────────────────────────────────────────────────────────
@@ -528,7 +493,7 @@ function openModal(id) {
   editId = id || null;
   const item = id ? items.find(i => i.id === id) : null;
   document.getElementById('modalTitle').textContent = id ? 'Edit Item' : 'Add New Item';
-  document.getElementById('fCode').value      = item ? item.code      : '';
+  document.getElementById('fCode').value      = item ? item.code      : nextCode();
   document.getElementById('fName').value      = item ? item.name      : '';
   document.getElementById('fSize').value      = item ? item.size      : '';
   document.getElementById('fCategory').value  = item ? item.category  : '';
@@ -701,6 +666,29 @@ async function cycleStatus(id) {
   }
 }
 
+// ── RACK STATUS CYCLING ───────────────────────────────────────────────────────
+const RACK_STATUS_NEXT = { '': 'Received', 'Received': 'Tagged', 'Tagged': 'Received' };
+
+async function cycleRackStatus(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const prev = item.category || '';
+  item.category = RACK_STATUS_NEXT[prev] ?? 'Received';
+  const badge = document.querySelector(`tr[data-id="${id}"] .rack-badge`);
+  if (badge) {
+    badge.className = 'badge rack-badge badge-' + item.category.toLowerCase();
+    badge.textContent = item.category;
+  }
+  try {
+    await db.upsert(toRow(item));
+    render();
+  } catch (err) {
+    item.category = prev;
+    alert('Could not update rack status: ' + err.message);
+    render();
+  }
+}
+
 // ── ROW SELECTION ─────────────────────────────────────────────────────────────
 let selectedIds = new Set();
 
@@ -758,16 +746,12 @@ function renderSelectionBar() {
 
 // ── REVIEW BANNER (items from form with no category) ─────────────────────────
 function renderReviewBanner() {
-  const uncategorised = items.filter(i => !i.category && i.code.startsWith('IT-'));
+  const unset = items.filter(i => !i.category);
   const banner = document.getElementById('reviewBanner');
-  if (uncategorised.length === 0) {
-    banner.style.display = 'none';
-    return;
-  }
+  if (unset.length === 0) { banner.style.display = 'none'; return; }
   document.getElementById('reviewBannerText').textContent =
-    uncategorised.length + ' item' + (uncategorised.length > 1 ? 's' : '') +
-    ' submitted via the drop-off form ' + (uncategorised.length > 1 ? 'have' : 'has') +
-    ' no category set yet.';
+    unset.length + ' item' + (unset.length > 1 ? 's' : '') +
+    (unset.length > 1 ? ' have' : ' has') + ' no rack status set yet.';
   banner.style.display = 'flex';
 }
 
@@ -775,8 +759,6 @@ function filterUncategorised() {
   document.getElementById('searchInput').value = '';
   document.getElementById('filterStatus').value = '';
   document.getElementById('filterCategory').value = '';
-  // Temporarily filter to only IT- items with no category by searching 'IT-'
-  document.getElementById('searchInput').value = 'IT-';
   applyFilters();
   document.getElementById('inventory').scrollIntoView({ behavior: 'smooth' });
 }
@@ -808,7 +790,14 @@ function renderTable() {
         <td class="mono">${esc(item.code)}</td>
         <td>${esc(item.name)}</td>
         <td>${esc(item.size || '—')}</td>
-        <td>${esc(item.category || '—')}</td>
+        <td>
+          <button class="badge-btn" onclick="cycleRackStatus('${item.id}')" title="Click to change: Received → Tagged">
+            ${item.category
+              ? `<span class="badge rack-badge badge-${item.category.toLowerCase()}">${esc(item.category)}</span>`
+              : `<span class="badge rack-badge" style="background:var(--sand);color:#aaa">Not Set</span>`
+            }
+          </button>
+        </td>
         <td>${esc(item.owner || '—')}</td>
         <td>${item.dateAdded ? fmtDate(item.dateAdded) : '—'}</td>
         <td>
@@ -962,7 +951,7 @@ function renderStatusChart(dataset) {
 
 function renderCategoryChart(dataset) {
   const sold = dataset.filter(i => i.status === 'Sold');
-  const cats = [...new Set(sold.map(i => i.category || 'Uncategorised'))].sort();
+  const cats = [...new Set(sold.map(i => i.owner || 'Unknown'))].sort();
   const wrap = document.getElementById('chartCategoryWrap');
 
   if (chartCategoryInst) { chartCategoryInst.destroy(); chartCategoryInst = null; }
@@ -973,9 +962,9 @@ function renderCategoryChart(dataset) {
   }
   wrap.innerHTML = '<canvas id="chartCategory"></canvas>';
 
-  const revenue    = cats.map(c => sold.filter(i => (i.category||'Uncategorised') === c).reduce((s,i) => s + (i.salePrice||0), 0));
-  const commission = cats.map(c => sold.filter(i => (i.category||'Uncategorised') === c).reduce((s,i) => s + (i.commissionAmt||0), 0));
-  const payout     = cats.map(c => sold.filter(i => (i.category||'Uncategorised') === c).reduce((s,i) => s + (i.finalPayout||0), 0));
+  const revenue    = cats.map(c => sold.filter(i => (i.owner||'Unknown') === c).reduce((s,i) => s + (i.salePrice||0), 0));
+  const commission = cats.map(c => sold.filter(i => (i.owner||'Unknown') === c).reduce((s,i) => s + (i.commissionAmt||0), 0));
+  const payout     = cats.map(c => sold.filter(i => (i.owner||'Unknown') === c).reduce((s,i) => s + (i.finalPayout||0), 0));
 
   chartCategoryInst = new Chart(document.getElementById('chartCategory'), {
     type: 'bar',
@@ -1016,7 +1005,7 @@ function renderCategoryChart(dataset) {
 
 // ── EXPORT CSV ────────────────────────────────────────────────────────────────
 function exportCSV() {
-  const cols = ['Item Code','Name','Size','Category','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
+  const cols = ['Item Code','Name','Size','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
   const rows = filteredItems.map(i => [
     i.code, i.name, i.size, i.category, i.owner, i.dateAdded,
     i.status, i.salePrice, i.commissionPct, i.commissionAmt, i.finalPayout
