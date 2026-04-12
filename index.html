@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Back on the Rack - Guidelines and Item Submission</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400&family=Jost:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="config.js"></script>
+<style>
+:root {
+  --brown:    #7B4A2D;
+  --brown-lt: #9A6840;
+  --cream:    #F9F3EE;
+  --sand:     #EDE0D4;
+  --bark:     #3B2A1A;
+  --accent:   #D4A97A;
+  --error:    #C0392B;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body { background: var(--cream); color: var(--bark); font-family: 'Jost', sans-serif; font-weight: 300; min-height: 100vh; }
+
+/* HEADER */
+header { background: var(--brown); color: var(--cream); text-align: center; padding: 2.8rem 1.5rem 2.2rem; }
+header h1 { font-family: 'Cormorant Garamond', serif; font-size: clamp(2.2rem,5vw,3.2rem); font-weight: 600; letter-spacing: .04em; line-height: 1.1; }
+header .sub { margin-top: .4rem; font-size: .85rem; opacity: .75; letter-spacing: .1em; text-transform: uppercase; }
+.nav-pills { display: flex; justify-content: center; gap: .8rem; margin-top: 1.4rem; flex-wrap: wrap; }
+.nav-pills a { background: rgba(255,255,255,.15); color: var(--cream); text-decoration: none; border: 1px solid rgba(255,255,255,.3); border-radius: 20px; padding: .35rem 1.1rem; font-size: .8rem; letter-spacing: .07em; text-transform: uppercase; transition: background .2s; }
+.nav-pills a:hover { background: rgba(255,255,255,.28); }
+
+/* SHARED */
+.section { max-width: 860px; margin: 0 auto; padding: 2.4rem 1.2rem; }
+.section-title { font-family: 'Cormorant Garamond', serif; font-size: clamp(1.6rem,3vw,2rem); color: var(--brown); margin-bottom: 1.6rem; padding-bottom: .6rem; border-bottom: 2px solid var(--accent); }
+
+/* GUIDELINES */
+#guidelines { background: #fff; border-top: 4px solid var(--accent); }
+.guidelines-intro { font-size: .96rem; line-height: 1.8; color: #5A3C1E; font-style: italic; margin-bottom: 2rem; padding: 1rem 1.4rem; background: var(--sand); border-left: 4px solid var(--accent); border-radius: 0 6px 6px 0; }
+.guide-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(255px,1fr)); gap: 1.1rem; margin-bottom: 1.6rem; }
+.guide-card { background: var(--cream); border: 1px solid var(--sand); border-radius: 10px; padding: 1.15rem 1.3rem; }
+.guide-card h3 { font-family: 'Cormorant Garamond', serif; font-size: 1.08rem; color: var(--brown); margin-bottom: .65rem; }
+.guide-card ul { list-style: none; }
+.guide-card ul li { font-size: .87rem; line-height: 1.65; color: var(--bark); padding: .22rem 0; border-bottom: 1px solid var(--sand); display: flex; gap: .5rem; }
+.guide-card ul li:last-child { border-bottom: none; }
+.guide-card ul li::before { content: '·'; color: var(--accent); font-weight: 700; flex-shrink: 0; }
+.guide-footer { background: var(--sand); border-radius: 10px; padding: 1rem 1.3rem; font-size: .87rem; line-height: 1.7; color: var(--brown); display: flex; align-items: flex-start; gap: .75rem; }
+.guide-footer strong { font-weight: 500; }
+.scroll-to-form { display: inline-block; margin-top: 1.5rem; background: var(--brown); color: var(--cream); text-decoration: none; border-radius: 8px; padding: .7rem 1.8rem; font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; letter-spacing: .03em; transition: background .2s; }
+.scroll-to-form:hover { background: var(--brown-lt); }
+
+/* DIVIDER */
+.page-divider { height: 4px; background: linear-gradient(90deg,var(--brown) 0%,var(--accent) 60%,var(--cream) 100%); }
+
+/* FORM */
+#form-section { background: var(--cream); }
+.form-intro { background: var(--sand); border-left: 4px solid var(--accent); padding: 1rem 1.4rem; border-radius: 0 6px 6px 0; font-size: .9rem; line-height: 1.7; color: var(--brown); margin-bottom: 1.8rem; }
+.form-intro strong { font-weight: 500; }
+
+/* SELLER BLOCK */
+.seller-block { background: #fff; border: 1px solid var(--sand); border-radius: 10px; padding: 1.5rem 1.6rem; margin-bottom: 2rem; box-shadow: 0 2px 12px rgba(123,74,45,.06); }
+.seller-block h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.2rem; color: var(--brown); margin-bottom: 1rem; padding-bottom: .5rem; border-bottom: 1px solid var(--sand); }
+.row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; flex: 1 1 190px; }
+.field label { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--brown-lt); margin-bottom: .38rem; font-weight: 400; }
+.field input, .field select { border: 1px solid #ddd; border-radius: 6px; padding: .54rem .78rem; font-family: 'Jost', sans-serif; font-size: .9rem; color: var(--bark); background: var(--cream); transition: border-color .2s, box-shadow .2s; outline: none; }
+.field input:focus, .field select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(212,169,122,.18); }
+.field input.invalid, .field select.invalid { border-color: var(--error); box-shadow: 0 0 0 3px rgba(192,57,43,.12); }
+.err-msg { color: var(--error); font-size: .73rem; margin-top: .28rem; }
+
+/* CALENDAR */
+.cal-wrap { margin-top: 1.2rem; border-top: 1px solid var(--sand); padding-top: 1.1rem; }
+.cal-wrap > .cal-label { font-size: .72rem; text-transform: uppercase; letter-spacing: .1em; color: var(--brown-lt); font-weight: 400; display: block; margin-bottom: .65rem; }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: .7rem; }
+.cal-nav-btn { background: none; border: 1px solid var(--sand); border-radius: 6px; width: 30px; height: 30px; cursor: pointer; font-size: .95rem; color: var(--brown); transition: background .15s; }
+.cal-nav-btn:hover { background: var(--sand); }
+.cal-month-label { font-family: 'Cormorant Garamond', serif; font-size: 1.05rem; color: var(--brown); font-weight: 600; }
+.cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 3px; }
+.cal-dow { text-align: center; font-size: .63rem; text-transform: uppercase; letter-spacing: .05em; color: #bbb; padding: .2rem 0 .4rem; font-weight: 400; }
+.cal-dow.active { color: var(--brown); font-weight: 600; }
+.cal-day { text-align: center; padding: .36rem .1rem; border-radius: 6px; font-size: .82rem; background: none; border: 1px solid transparent; font-family: 'Jost', sans-serif; width: 100%; cursor: default; color: #ccc; }
+.cal-day.pickable { color: var(--bark); cursor: pointer; background: var(--cream); border-color: var(--sand); transition: all .15s; }
+.cal-day.pickable:hover { background: var(--sand); border-color: var(--accent); }
+.cal-day.selected { background: var(--brown) !important; color: var(--cream) !important; border-color: var(--brown) !important; font-weight: 500; }
+.cal-day.past { opacity: .28; pointer-events: none; }
+.cal-selected-display { margin-top: .65rem; font-size: .88rem; color: var(--brown); min-height: 1.5rem; }
+.cal-selected-display .sel-badge { background: var(--sand); border-radius: 5px; padding: .22rem .75rem; font-weight: 500; }
+.cal-err { color: var(--error); font-size: .74rem; margin-top: .35rem; display: none; }
+.cal-wrap.cal-invalid .cal-err { display: block; }
+
+/* ITEMS */
+.counter-bar { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .8rem; margin-bottom: 1rem; }
+.counter-bar h2 { font-family: 'Cormorant Garamond', serif; font-size: 1.3rem; color: var(--brown); }
+.pill { background: var(--brown); color: var(--cream); font-size: .78rem; letter-spacing: .06em; padding: .28rem .9rem; border-radius: 20px; }
+.pill span { font-weight: 600; }
+.item-card { background: #fff; border: 1px solid var(--sand); border-radius: 10px; margin-bottom: .9rem; box-shadow: 0 2px 10px rgba(123,74,45,.05); overflow: hidden; animation: slideIn .22s ease; }
+@keyframes slideIn { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+.card-header { display: flex; align-items: center; justify-content: space-between; background: var(--sand); padding: .65rem 1.1rem; cursor: pointer; user-select: none; }
+.card-header-left { display: flex; align-items: center; gap: .75rem; }
+.item-num { background: var(--brown); color: var(--cream); width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: .75rem; font-weight: 500; flex-shrink: 0; }
+.card-label { font-family: 'Cormorant Garamond', serif; font-size: .97rem; color: var(--bark); }
+.card-label em { font-style: italic; color: var(--brown-lt); font-size: .85rem; margin-left: .35rem; }
+.chevron { font-size: .85rem; color: var(--brown-lt); transition: transform .2s; }
+.item-card.collapsed .chevron { transform: rotate(-90deg); }
+.item-card.collapsed .card-body { display: none; }
+.card-body { padding: 1.1rem 1.3rem 1.3rem; }
+.card-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: .85rem; }
+.card-row:last-child { margin-bottom: 0; }
+.price-hint { font-size: .73rem; color: var(--brown-lt); margin-top: .3rem; line-height: 1.4; }
+.remove-btn { background: none; border: 1px solid #e0c8b8; color: var(--brown-lt); border-radius: 5px; padding: .25rem .65rem; font-family: 'Jost', sans-serif; font-size: .76rem; cursor: pointer; transition: all .2s; }
+.remove-btn:hover { background: #fbeee6; border-color: var(--brown); color: var(--brown); }
+.add-btn { width: 100%; background: none; border: 2px dashed var(--accent); color: var(--brown); border-radius: 10px; padding: .85rem; font-family: 'Cormorant Garamond', serif; font-size: 1rem; cursor: pointer; transition: all .2s; margin-bottom: 1.6rem; }
+.add-btn:hover { background: var(--sand); border-color: var(--brown); }
+.add-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+/* AGREE + SUBMIT */
+.agree-row { display: flex; align-items: flex-start; gap: .75rem; background: var(--sand); border-radius: 8px; padding: 1rem 1.2rem; margin-bottom: 1.5rem; font-size: .88rem; line-height: 1.65; color: var(--brown); }
+.agree-row input[type=checkbox] { width: 18px; height: 18px; flex-shrink: 0; margin-top: .15rem; accent-color: var(--brown); cursor: pointer; }
+.agree-row a { color: var(--brown); font-weight: 500; }
+.submit-area { background: var(--brown); border-radius: 12px; padding: 1.6rem; text-align: center; color: var(--cream); }
+.submit-area p { font-size: .86rem; opacity: .8; margin-bottom: 1.1rem; line-height: 1.6; }
+.submit-btn { background: var(--cream); color: var(--brown); border: none; border-radius: 8px; padding: .8rem 2.2rem; font-family: 'Cormorant Garamond', serif; font-size: 1.1rem; font-weight: 600; cursor: pointer; letter-spacing: .03em; transition: all .2s; }
+.submit-btn:hover { background: var(--accent); color: #fff; }
+.submit-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+/* SUCCESS */
+#success { display: none; max-width: 600px; margin: 4rem auto; text-align: center; padding: 2rem 1.4rem; }
+#success .tick { font-size: 3rem; margin-bottom: 1rem; }
+#success h2 { font-family: 'Cormorant Garamond', serif; font-size: 2rem; color: var(--brown); margin-bottom: .7rem; }
+#success p { color: var(--brown-lt); line-height: 1.7; font-size: .93rem; }
+#success table { width: 100%; border-collapse: collapse; margin: 1.4rem 0; text-align: left; font-size: .83rem; }
+#success th { background: var(--sand); color: var(--brown); padding: .45rem .75rem; font-weight: 500; text-transform: uppercase; font-size: .7rem; letter-spacing: .05em; }
+#success td { padding: .4rem .75rem; border-bottom: 1px solid var(--sand); }
+#success tr:last-child td { border-bottom: none; }
+.restart-btn { background: var(--brown); color: var(--cream); border: none; border-radius: 8px; padding: .7rem 1.8rem; font-family: 'Cormorant Garamond', serif; font-size: 1rem; cursor: pointer; margin-top: 1rem; }
+
+@media (max-width: 560px) {
+  .guide-grid { grid-template-columns: 1fr; }
+  .card-row, .row { flex-direction: column; }
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <h1>Back on the Rack</h1>
+  <p class="sub">at Workshop 26 &mdash; Rack Rental</p>
+  <nav class="nav-pills">
+    <a href="#guidelines">Client Guidelines</a>
+    <a href="#form-section">Submit Your Items</a>
+  </nav>
+</header>
+
+<!-- GUIDELINES -->
+<section id="guidelines">
+  <div class="section">
+    <h2 class="section-title">Client Guidelines</h2>
+    <p class="guidelines-intro">
+      We&rsquo;re so glad you&rsquo;re here! Back on the Rack is a hassle-free way to on-sell your quality preloved clothing &mdash; no product photography, no chasing messages, just a lovely retail space doing the work for you.
+    </p>
+    <div class="guide-grid">
+      <div class="guide-card">
+        <h3>&#128197; How It Works</h3>
+        <ul>
+          <li>Bring up to 20 items &mdash; we&rsquo;ll display 15 at a time and top up as pieces sell.</li>
+          <li>Your items stay on display for a 6-week cycle.</li>
+          <li>Delivery by arrangement with Amy &mdash; get in touch to lock in your drop-off time.</li>
+        </ul>
+      </div>
+      <div class="guide-card">
+        <h3>&#128179; Fees &amp; Payments</h3>
+        <ul>
+          <li>$20 rack fee per cycle, payable before drop-off (cash or direct deposit).</li>
+          <li>15% commission applies to each item sold.</li>
+          <li>Payment made to you within 4 weeks of your cycle end.</li>
+          <li>Price items to already include the 15% &mdash; that&rsquo;s the tag price customers see.</li>
+        </ul>
+      </div>
+      <div class="guide-card">
+        <h3>&#128247; Garment Standards</h3>
+        <ul>
+          <li>All clothing must be clean, freshly ironed and in full working order.</li>
+          <li>Items with marks, stains, holes, rips, missing buttons or faulty zips will be set aside for collection.</li>
+        </ul>
+      </div>
+      <div class="guide-card">
+        <h3>&#127991; Presentation</h3>
+        <ul>
+          <li>We supply hangers and attach swing tags with your sale details.</li>
+          <li>Bring a completed item list at drop-off: brand, size, price (inc. commission) and a short description.</li>
+          <li>Use our online form below or the hard copy form provided at drop-off.</li>
+        </ul>
+      </div>
+      <div class="guide-card">
+        <h3>&#128230; After Your Cycle</h3>
+        <ul>
+          <li>We&rsquo;ll text you when your cycle wraps up.</li>
+          <li>Please collect unsold items within 2 weeks.</li>
+          <li>Anything remaining after 2 weeks will be donated to the Op Shop.</li>
+        </ul>
+      </div>
+      <div class="guide-card">
+        <h3>&#128207; Sizing &amp; Categories</h3>
+        <ul>
+          <li>We aim to keep an inclusive size range &mdash; your spot timing may vary based on current stock mix.</li>
+          <li>Let us know your size range when joining the waitlist.</li>
+          <li>Currently ladies&rsquo; clothing only. Vintage, kids &amp; more coming soon!</li>
+        </ul>
+      </div>
+    </div>
+    <div class="guide-footer">
+      <span>&#128222;</span>
+      <div>
+        <strong>Questions? We&rsquo;d love to hear from you.</strong> Contact Amy on <strong>0467 004 555</strong>.<br>
+        <span style="opacity:.75;font-size:.83rem">(Please note: the lovely team at W26 aren&rsquo;t able to help with BonR queries &mdash; they&rsquo;re too busy keeping everything looking beautiful!)</span>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:1.6rem">
+      <a class="scroll-to-form" href="#form-section">Ready? Submit your items below &#8595;</a>
+    </div>
+  </div>
+</section>
+
+<div class="page-divider"></div>
+
+<!-- FORM -->
+<section id="form-section">
+  <div id="app">
+    <div class="section">
+      <h2 class="section-title">Submit Your Items</h2>
+
+      <div class="form-intro">
+        <strong>Before you start:</strong> Complete your details below, choose a preferred drop-off date, then fill in one row per garment. Up to <strong>20 items</strong> per cycle. Price each item to <strong>include the 15% commission</strong> &mdash; that&rsquo;s the tag price your customer will see.
+      </div>
+
+      <!-- Seller details -->
+      <div class="seller-block">
+        <h2>Your Details</h2>
+        <div class="row">
+          <div class="field">
+            <label>Full Name *</label>
+            <input type="text" id="sel-name" placeholder="Jane Smith">
+          </div>
+          <div class="field">
+            <label>Phone *</label>
+            <input type="tel" id="sel-phone" placeholder="04xx xxx xxx">
+          </div>
+          <div class="field">
+            <label>Email</label>
+            <input type="email" id="sel-email" placeholder="jane@email.com">
+          </div>
+        </div>
+
+        <!-- Calendar drop-off picker -->
+        <div class="cal-wrap" id="cal-wrap">
+          <span class="cal-label">Preferred Drop-Off Date * &nbsp;<span style="font-weight:300;text-transform:none;letter-spacing:0;font-size:.78rem;color:var(--brown-lt)">(Tue, Thu, Fri &amp; Sat only)</span></span>
+          <div class="cal-nav">
+            <button class="cal-nav-btn" onclick="calPrev()" aria-label="Previous month">&#8249;</button>
+            <span class="cal-month-label" id="cal-month-label"></span>
+            <button class="cal-nav-btn" onclick="calNext()" aria-label="Next month">&#8250;</button>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+          <div class="cal-selected-display" id="cal-display">No date selected yet.</div>
+          <div class="cal-err" id="cal-err">Please select a preferred drop-off date.</div>
+        </div>
+      </div>
+
+      <!-- Items -->
+      <div class="counter-bar">
+        <h2>Your Garments</h2>
+        <div class="pill"><span id="item-count">1</span> / 20 items</div>
+      </div>
+      <div id="items-list"></div>
+      <button class="add-btn" id="add-btn" onclick="addItem()">+ Add another item</button>
+
+      <!-- Agree -->
+      <div class="agree-row">
+        <input type="checkbox" id="agree-check">
+        <label for="agree-check">
+          I have read and agree to the <a href="#guidelines">Back on the Rack Client Guidelines</a> above. I understand items must be clean, ironed and priced to include the 15% commission, and that unsold items must be collected within 2 weeks of my cycle end.
+        </label>
+      </div>
+
+      <div class="submit-area">
+        <p>Once you&rsquo;re happy with your list, hit submit. Amy will be in touch to confirm your drop-off.</p>
+        <button class="submit-btn" onclick="submitForm()">Submit my items &#8594;</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Success -->
+  <div id="success">
+    <div class="tick">&#127881;</div>
+    <h2>You&rsquo;re all set!</h2>
+    <p>Thanks for submitting your garments. Amy will be in touch shortly to confirm your drop-off. Here&rsquo;s a summary of what you submitted:</p>
+    <div id="summary-table"></div>
+    <button class="restart-btn" onclick="resetForm()">Submit another cycle</button>
+  </div>
+</section>
+
+<script>
+// ── SIZES ──
+const SIZES = ['XXS','XS','S','M','L','XL','XXL','3XL','4XL','5XL','6','8','10','12','14','16','18','20','22','24','26','28','One Size'];
+
+// ── CALENDAR STATE ──
+// Allowed days of week: 2=Tue, 4=Thu, 5=Fri, 6=Sat
+const ALLOWED_DAYS = new Set([2, 4, 5, 6]);
+const DAY_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+let calYear, calMonth, selectedDate = null;
+
+function calInit() {
+  const now = new Date();
+  calYear = now.getFullYear();
+  calMonth = now.getMonth();
+  renderCal();
+}
+
+function calPrev() {
+  calMonth--;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  renderCal();
+}
+
+function calNext() {
+  calMonth++;
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCal();
+}
+
+function renderCal() {
+  document.getElementById('cal-month-label').textContent = MONTH_NAMES[calMonth] + ' ' + calYear;
+
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+
+  // Day-of-week headers
+  DAY_NAMES.forEach((d, i) => {
+    const el = document.createElement('div');
+    el.className = 'cal-dow' + (ALLOWED_DAYS.has(i) ? ' active' : '');
+    el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Empty cells before first day
+  for (let i = 0; i < firstDay; i++) {
+    const el = document.createElement('button');
+    el.className = 'cal-day';
+    el.disabled = true;
+    grid.appendChild(el);
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const date = new Date(calYear, calMonth, d);
+    const dow = date.getDay();
+    const el = document.createElement('button');
+    el.textContent = d;
+    el.type = 'button';
+
+    const classes = ['cal-day'];
+    if (ALLOWED_DAYS.has(dow)) {
+      classes.push('pickable');
+      if (date < today) classes.push('past');
+      // check if selected
+      if (selectedDate &&
+          date.getDate() === selectedDate.getDate() &&
+          date.getMonth() === selectedDate.getMonth() &&
+          date.getFullYear() === selectedDate.getFullYear()) {
+        classes.push('selected');
+      }
+    }
+    el.className = classes.join(' ');
+
+    if (ALLOWED_DAYS.has(dow) && date >= today) {
+      el.onclick = () => selectDate(date);
+    }
+    grid.appendChild(el);
+  }
+}
+
+function selectDate(date) {
+  selectedDate = date;
+  renderCal();
+  const opts = { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' };
+  const formatted = date.toLocaleDateString('en-AU', opts);
+  document.getElementById('cal-display').innerHTML = 'Selected: <span class="sel-badge">' + formatted + '</span>';
+  document.getElementById('cal-wrap').classList.remove('cal-invalid');
+}
+
+// ── ITEMS STATE ──
+let items = [];
+let nextId = 1;
+
+function createItem() { return { id: nextId++, brand: '', size: '', description: '', price: '', collapsed: false }; }
+
+function addItem() {
+  if (items.length >= 20) return;
+  items.push(createItem());
+  render();
+}
+
+function removeItem(id) {
+  if (items.length === 1) return;
+  items = items.filter(i => i.id !== id);
+  render();
+}
+
+function toggleCollapse(id) {
+  const item = items.find(i => i.id === id);
+  if (item) { item.collapsed = !item.collapsed; render(); }
+}
+
+function updateField(id, field, value) {
+  const item = items.find(i => i.id === id);
+  if (item) item[field] = value;
+  updateCounter();
+  updateCardTitle(id);
+}
+
+function updateCounter() {
+  document.getElementById('item-count').textContent = items.length;
+  const btn = document.getElementById('add-btn');
+  btn.disabled = items.length >= 20;
+  btn.textContent = items.length >= 20 ? '\u2713 Maximum 20 items reached' : '+ Add another item';
+}
+
+function updateCardTitle(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const el = document.querySelector('[data-title="' + id + '"]');
+  if (!el) return;
+  const label = [item.brand, item.size, item.price ? '$' + item.price : ''].filter(Boolean).join(' \u00b7 ');
+  el.innerHTML = label ? '<em>' + label + '</em>' : '<em style="opacity:.4">fill in details below</em>';
+}
+
+function buildSizeOptions(selected) {
+  return SIZES.map(s => '<option value="' + s + '"' + (s === selected ? ' selected' : '') + '>' + s + '</option>').join('');
+}
+
+function render() {
+  const list = document.getElementById('items-list');
+  list.innerHTML = items.map((item, idx) => {
+    const titleLabel = [item.brand, item.size, item.price ? '$' + item.price : ''].filter(Boolean).join(' \u00b7 ');
+    const titleHtml = titleLabel
+      ? '<em>' + titleLabel + '</em>'
+      : '<em style="opacity:.4">fill in details below</em>';
+    return '<div class="item-card ' + (item.collapsed ? 'collapsed' : '') + '" id="card-' + item.id + '">' +
+      '<div class="card-header" onclick="toggleCollapse(' + item.id + ')">' +
+        '<div class="card-header-left">' +
+          '<div class="item-num">' + (idx + 1) + '</div>' +
+          '<div class="card-label">Item ' + (idx + 1) + ' <span data-title="' + item.id + '">' + titleHtml + '</span></div>' +
+        '</div>' +
+        '<div style="display:flex;align-items:center;gap:.65rem">' +
+          (items.length > 1 ? '<button class="remove-btn" onclick="event.stopPropagation();removeItem(' + item.id + ')">Remove</button>' : '') +
+          '<span class="chevron">&#9660;</span>' +
+        '</div>' +
+      '</div>' +
+      '<div class="card-body">' +
+        '<div class="card-row">' +
+          '<div class="field" style="flex:2 1 190px"><label>Brand</label>' +
+            '<input type="text" placeholder="e.g. Country Road, Kmart, Unknown" value="' + escHtml(item.brand) + '" oninput="updateField(' + item.id + ',\'brand\',this.value)"></div>' +
+          '<div class="field" style="flex:1 1 110px"><label>Size *</label>' +
+            '<select onchange="updateField(' + item.id + ',\'size\',this.value)"><option value="">\u2014 select \u2014</option>' + buildSizeOptions(item.size) + '</select></div>' +
+          '<div class="field" style="flex:1 1 100px"><label>Price (incl. 15%) *</label>' +
+            '<input type="number" min="0" step="0.50" placeholder="0.00" value="' + escHtml(item.price) + '" oninput="updateField(' + item.id + ',\'price\',this.value)">' +
+            '<div class="price-hint">Tag price the customer pays.</div></div>' +
+        '</div>' +
+        '<div class="card-row">' +
+          '<div class="field" style="flex:1 1 100%"><label>Description *</label>' +
+            '<input type="text" placeholder="e.g. Floral wrap dress, rust tones, brand new with tags" value="' + escHtml(item.description) + '" oninput="updateField(' + item.id + ',\'description\',this.value)"></div>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  updateCounter();
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── VALIDATE ──
+function validate() {
+  let ok = true;
+
+  // Name + phone
+  ['sel-name','sel-phone'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('invalid');
+    const next = el.nextElementSibling;
+    if (next && next.classList.contains('err-msg')) next.remove();
+    if (!el.value.trim()) {
+      el.classList.add('invalid');
+      const msg = document.createElement('div');
+      msg.className = 'err-msg';
+      msg.textContent = 'Required';
+      el.after(msg);
+      ok = false;
+    }
+  });
+
+  // Date
+  if (!selectedDate) {
+    document.getElementById('cal-wrap').classList.add('cal-invalid');
+    ok = false;
+  } else {
+    document.getElementById('cal-wrap').classList.remove('cal-invalid');
+  }
+
+  // Agree
+  if (!document.getElementById('agree-check').checked) {
+    alert('Please read and agree to the Client Guidelines before submitting.');
+    ok = false;
+  }
+
+  // Items
+  items.forEach(item => {
+    if (!item.size || !item.description.trim() || !item.price) {
+      if (item.collapsed) { item.collapsed = false; render(); }
+      ok = false;
+      setTimeout(() => {
+        const card = document.getElementById('card-' + item.id);
+        if (!card) return;
+        if (!item.size) { const s = card.querySelectorAll('select')[0]; if (s) s.classList.add('invalid'); }
+        if (!item.description.trim()) { const i = card.querySelectorAll('input')[1]; if (i) i.classList.add('invalid'); }
+        if (!item.price) { const i = card.querySelectorAll('input')[2]; if (i) i.classList.add('invalid'); }
+      }, 50);
+    }
+  });
+
+  return ok;
+}
+
+// ── SUBMIT ──
+async function submitForm() {
+  if (!validate()) {
+    document.getElementById('form-section').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  const sellerName  = document.getElementById('sel-name').value.trim();
+  const sellerPhone = document.getElementById('sel-phone').value.trim();
+  const sellerEmail = document.getElementById('sel-email').value.trim();
+  const dropOff     = selectedDate.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  const itemLines = items.map((item, idx) =>
+    ['Item ' + (idx + 1),
+     item.brand ? 'Brand: ' + item.brand : null,
+     'Size: ' + item.size,
+     'Description: ' + item.description,
+     'Price (incl. 15%): $' + parseFloat(item.price).toFixed(2)
+    ].filter(Boolean).join(' | ')
+  ).join('\n');
+
+  const payload = {
+    _subject: 'Back on the Rack \u2014 New Submission from ' + sellerName,
+    Name: sellerName,
+    Phone: sellerPhone,
+    Email: sellerEmail || '(not provided)',
+    'Preferred Drop-Off Date': dropOff,
+    'Total Items': items.length,
+    Items: itemLines
+  };
+
+  const btn = document.querySelector('.submit-btn');
+  btn.textContent = 'Sending\u2026';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('https://formspree.io/f/xdapqnrj', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) throw new Error('Network error');
+
+    const rows = items.map((item, idx) =>
+      '<tr><td>' + (idx + 1) + '</td><td>' + (escHtml(item.brand) || '&mdash;') + '</td><td>' +
+      escHtml(item.size) + '</td><td>' + escHtml(item.description) + '</td><td>$' +
+      parseFloat(item.price).toFixed(2) + '</td></tr>'
+    ).join('');
+
+    document.getElementById('summary-table').innerHTML =
+      '<p style="font-size:.85rem;color:var(--brown);margin-bottom:.4rem;text-align:left">' +
+        '<strong>' + escHtml(sellerName) + '</strong> &mdash; ' + escHtml(sellerPhone) +
+        (sellerEmail ? ' &mdash; ' + escHtml(sellerEmail) : '') +
+      '</p>' +
+      '<p style="font-size:.85rem;color:var(--brown-lt);margin-bottom:.8rem;text-align:left">Preferred drop-off: <strong>' + escHtml(dropOff) + '</strong></p>' +
+      '<table><thead><tr><th>#</th><th>Brand</th><th>Size</th><th>Description</th><th>Price</th></tr></thead><tbody>' + rows + '</tbody></table>';
+
+    // Sync to dashboard via Supabase (works from any device)
+    try {
+      await saveToInventory(sellerName, selectedDate, items);
+    } catch (err) {
+      console.error('Dashboard sync failed:', err.message);
+      // Don't block the success screen — Formspree email already sent
+    }
+
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('success').style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  } catch (err) {
+    btn.textContent = 'Submit my items \u2192';
+    btn.disabled = false;
+    alert('Sorry, something went wrong. Please try again or contact Amy on 0467 004 555.');
+    console.error(err);
+  }
+}
+
+// ── SAVE TO INVENTORY DASHBOARD (Supabase) ───────────────────────────────────
+async function saveToInventory(sellerName, dropOffDate, formItems) {
+  const H = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+    'Content-Type': 'application/json',
+  };
+  const base = SUPABASE_URL + '/rest/v1/inventory';
+
+  // Fetch existing codes to find the next IT-XXX number
+  let nextNum = 1;
+  try {
+    const r = await fetch(base + '?select=code', { headers: H });
+    if (r.ok) {
+      const rows = await r.json();
+      const itPat = /^IT-(\d+)$/;
+      const nums  = rows
+        .map(row => { const m = (row.code || '').match(itPat); return m ? parseInt(m[1]) : 0; })
+        .filter(n => n > 0);
+      if (nums.length) nextNum = Math.max(...nums) + 1;
+    }
+  } catch {} // silently continue — code will still be unique via timestamp fallback
+
+  const dateStr = (dropOffDate instanceof Date)
+    ? dropOffDate.toISOString().slice(0, 10)
+    : new Date().toISOString().slice(0, 10);
+
+  const rows = formItems.map(item => {
+    const sp = parseFloat(item.price) || 0;
+    const cp = 15;
+    const commAmt = +(sp * cp / 100).toFixed(2);
+    return {
+      id:             'form-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
+      code:           'IT-' + String(nextNum++).padStart(3, '0'),
+      name:           item.description,
+      size:           item.size     || null,
+      category:       null,
+      owner:          sellerName,
+      date_added:     dateStr,
+      status:         'Available',
+      sale_price:     sp,
+      commission_pct: cp,
+      commission_amt: commAmt,
+      final_payout:   +(sp - commAmt).toFixed(2),
+    };
+  });
+
+  const res = await fetch(base, {
+    method: 'POST',
+    headers: { ...H, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(rows),
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+// ── RESET ──
+function resetForm() {
+  items = []; nextId = 1; selectedDate = null;
+  document.getElementById('sel-name').value = '';
+  document.getElementById('sel-phone').value = '';
+  document.getElementById('sel-email').value = '';
+  document.getElementById('agree-check').checked = false;
+  document.getElementById('cal-display').textContent = 'No date selected yet.';
+  document.getElementById('cal-wrap').classList.remove('cal-invalid');
+  calInit();
+  addItem();
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('success').style.display = 'none';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── INIT ──
+calInit();
+addItem();
+</script>
+</body>
+</html>
