@@ -80,8 +80,11 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
 .badge-available { background: var(--green-lt); color: var(--green); }
 .badge-sold      { background: var(--blue-lt); color: #2a5a9a; }
 .badge-returned  { background: var(--red-lt);  color: var(--red); }
-.badge-received  { background: #FFF3E0; color: #C75B00; }
-.badge-tagged    { background: var(--green-lt); color: var(--green); }
+.badge-received           { background: #FFF3E0; color: #C75B00; }
+.badge-tagged             { background: var(--green-lt); color: var(--green); }
+.badge-payment-processed  { background: #F3E8FF; color: #6B21A8; }
+.row-archived td          { opacity: .38; }
+.row-archived td.actions  { opacity: 1; }
 
 /* MODAL OVERLAY */
 .overlay { position: fixed; inset: 0; background: rgba(59,42,26,.45); display: flex; align-items: center; justify-content: center; z-index: 100; padding: 1rem; opacity: 0; pointer-events: none; transition: opacity .2s; }
@@ -247,6 +250,7 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
       <option value="">All Statuses</option>
       <option>Available</option>
       <option>Sold</option>
+      <option>Payment Processed</option>
       <option>Returned</option>
     </select>
     <select id="filterCategory" onchange="applyFilters()">
@@ -256,6 +260,8 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
     </select>
     <button class="btn btn-outline" onclick="clearFilters()">Clear Filters</button>
     <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+    <button class="btn btn-outline" id="toggleArchivedBtn" onclick="toggleShowArchived()">Show Archived</button>
+    <button class="btn btn-outline" onclick="openArchiveCycleModal()">Archive Cycle</button>
   </div>
 
   <!-- SELECTION SUMMARY BAR (visible when rows are ticked) -->
@@ -275,7 +281,10 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
         <span class="sl">Payout Owed</span>
       </div>
     </div>
-    <button class="btn btn-outline btn-sm" style="border-color:rgba(255,255,255,.4);color:var(--cream)" onclick="clearSelection()">Clear</button>
+    <div style="display:flex;gap:.5rem">
+      <button class="btn btn-outline btn-sm" style="border-color:rgba(255,255,255,.4);color:var(--cream)" onclick="archiveSelected()">Archive</button>
+      <button class="btn btn-outline btn-sm" style="border-color:rgba(255,255,255,.4);color:var(--cream)" onclick="clearSelection()">Clear</button>
+    </div>
   </div>
 
   <!-- TABLE -->
@@ -341,6 +350,7 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
           <select id="fStatus">
             <option>Available</option>
             <option>Sold</option>
+            <option>Payment Processed</option>
             <option>Returned</option>
           </select>
         </div>
@@ -384,6 +394,36 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveItem()">Save Item</button>
+    </div>
+  </div>
+</div>
+
+<!-- ARCHIVE CYCLE MODAL -->
+<div class="overlay" id="archiveOverlay" onclick="archiveOverlayClick(event)">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h2>Archive Supplier Cycle</h2>
+      <button class="modal-close" onclick="closeArchiveModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.88rem;line-height:1.55;color:var(--brown-lt);margin-bottom:1.2rem">
+        Select a supplier to archive all of their current active items at once.
+        Archived items are hidden from the main view but can be shown again using
+        <strong>Show Archived</strong> in the toolbar.
+      </p>
+      <div class="form-row">
+        <div class="form-field full">
+          <label>Supplier / Owner</label>
+          <select id="archiveSupplierSelect" onchange="updateArchiveCount()">
+            <option value="">— select supplier —</option>
+          </select>
+        </div>
+      </div>
+      <p id="archiveCount" style="font-size:.84rem;color:var(--brown);margin-top:.3rem;min-height:1.2em"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeArchiveModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="archiveCycle()">Archive Cycle</button>
     </div>
   </div>
 </div>
@@ -433,6 +473,7 @@ function toRow(item) {
     commission_pct: item.commissionPct,
     commission_amt: item.commissionAmt,
     final_payout:   item.finalPayout,
+    archived:       item.archived    || false,
   };
 }
 function fromRow(row) {
@@ -447,6 +488,7 @@ function fromRow(row) {
     commissionPct: parseFloat(row.commission_pct) || 0,
     commissionAmt: parseFloat(row.commission_amt) || 0,
     finalPayout:   parseFloat(row.final_payout)   || 0,
+    archived:      row.archived      || false,
   };
 }
 
@@ -600,12 +642,23 @@ function showErr(msg) {
 }
 
 // ── FILTER / SORT / PAGINATE ──────────────────────────────────────────────────
+let showArchived = false;
+
+function toggleShowArchived() {
+  showArchived = !showArchived;
+  const btn = document.getElementById('toggleArchivedBtn');
+  btn.textContent = showArchived ? 'Hide Archived' : 'Show Archived';
+  btn.style.background = showArchived ? 'var(--sand)' : '';
+  applyFilters();
+}
+
 function applyFilters() {
   const q    = document.getElementById('searchInput').value.toLowerCase().trim();
   const stat = document.getElementById('filterStatus').value;
   const cat  = document.getElementById('filterCategory').value;
 
   filteredItems = items.filter(i => {
+    if (!showArchived && i.archived) return false;
     const matchQ    = !q || [i.code, i.name, i.owner, i.size].some(v => (v||'').toLowerCase().includes(q));
     const matchStat = !stat || i.status === stat;
     const matchCat  = !cat  || i.category === cat;
@@ -643,7 +696,8 @@ function sortBy(col) {
 }
 
 // ── STATUS CYCLING ────────────────────────────────────────────────────────────
-const STATUS_NEXT = { 'Available': 'Sold', 'Sold': 'Returned', 'Returned': 'Available' };
+const STATUS_NEXT = { 'Available': 'Sold', 'Sold': 'Payment Processed', 'Payment Processed': 'Returned', 'Returned': 'Available' };
+const statusClass = s => (s || '').toLowerCase().replace(/ /g, '-');
 
 async function cycleStatus(id) {
   const item = items.find(i => i.id === id);
@@ -651,9 +705,9 @@ async function cycleStatus(id) {
   const prev = item.status;
   item.status = STATUS_NEXT[prev] || 'Available';
   // Update badge in place instantly, then sync to DB
-  const badge = document.querySelector(`tr[data-id="${id}"] .badge`);
+  const badge = document.querySelector(`tr[data-id="${id}"] .status-badge`);
   if (badge) {
-    badge.className = 'badge badge-' + item.status.toLowerCase();
+    badge.className = 'badge status-badge badge-' + statusClass(item.status);
     badge.textContent = item.status;
   }
   try {
@@ -744,6 +798,73 @@ function renderSelectionBar() {
   bar.style.display = 'flex';
 }
 
+// ── ARCHIVE ───────────────────────────────────────────────────────────────────
+async function archiveSelected() {
+  if (selectedIds.size === 0) return;
+  const n = selectedIds.size;
+  if (!confirm(`Archive ${n} selected item${n > 1 ? 's' : ''}? They will be hidden from the main view.`)) return;
+  const toArchive = items.filter(i => selectedIds.has(i.id) && !i.archived);
+  try {
+    await Promise.all(toArchive.map(item => { item.archived = true; return db.upsert(toRow(item)); }));
+    selectedIds.clear();
+    render();
+  } catch (err) {
+    toArchive.forEach(i => { i.archived = false; });
+    alert('Could not archive: ' + err.message);
+  }
+}
+
+async function restoreItem(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  item.archived = false;
+  try {
+    await db.upsert(toRow(item));
+    render();
+  } catch (err) {
+    item.archived = true;
+    alert('Could not restore: ' + err.message);
+  }
+}
+
+function openArchiveCycleModal() {
+  const sel = document.getElementById('archiveSupplierSelect');
+  const suppliers = [...new Set(items.filter(i => !i.archived && i.owner).map(i => i.owner))].sort();
+  sel.innerHTML = '<option value="">— select supplier —</option>' +
+    suppliers.map(s => `<option>${esc(s)}</option>`).join('');
+  document.getElementById('archiveCount').textContent = '';
+  document.getElementById('archiveOverlay').classList.add('open');
+}
+function closeArchiveModal()       { document.getElementById('archiveOverlay').classList.remove('open'); }
+function archiveOverlayClick(e)    { if (e.target === document.getElementById('archiveOverlay')) closeArchiveModal(); }
+
+function updateArchiveCount() {
+  const supplier = document.getElementById('archiveSupplierSelect').value;
+  const el = document.getElementById('archiveCount');
+  if (!supplier) { el.textContent = ''; return; }
+  const count = items.filter(i => i.owner === supplier && !i.archived).length;
+  el.textContent = count + ' item' + (count !== 1 ? 's' : '') + ' will be archived.';
+}
+
+async function archiveCycle() {
+  const supplier = document.getElementById('archiveSupplierSelect').value;
+  if (!supplier) { alert('Please select a supplier.'); return; }
+  const toArchive = items.filter(i => i.owner === supplier && !i.archived);
+  if (!toArchive.length) { alert('No active items found for this supplier.'); return; }
+  const btn = document.querySelector('#archiveOverlay .btn-primary');
+  btn.disabled = true; btn.textContent = 'Archiving…';
+  try {
+    await Promise.all(toArchive.map(item => { item.archived = true; return db.upsert(toRow(item)); }));
+    closeArchiveModal();
+    render();
+  } catch (err) {
+    toArchive.forEach(i => { i.archived = false; });
+    alert('Could not archive: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Archive Cycle';
+  }
+}
+
 // ── REVIEW BANNER (items from form with no category) ─────────────────────────
 function renderReviewBanner() {
   const unset = items.filter(i => !i.category);
@@ -784,37 +905,47 @@ function renderTable() {
       <p>No items found. Add your first item or adjust your filters.</p>
     </div></td></tr>`;
   } else {
-    tbody.innerHTML = slice.map(item => `
-      <tr data-id="${item.id}" class="${selectedIds.has(item.id) ? 'row-selected' : ''}">
-        <td class="cb-col"><input type="checkbox" class="row-cb" ${selectedIds.has(item.id) ? 'checked' : ''} onclick="toggleSelect('${item.id}')"></td>
+    tbody.innerHTML = slice.map(item => {
+      const rowClass = [
+        selectedIds.has(item.id) ? 'row-selected' : '',
+        item.archived ? 'row-archived' : '',
+      ].filter(Boolean).join(' ');
+      return `
+      <tr data-id="${item.id}" class="${rowClass}">
+        <td class="cb-col"><input type="checkbox" class="row-cb" ${selectedIds.has(item.id) ? 'checked' : ''} onclick="toggleSelect('${item.id}')" ${item.archived ? 'disabled' : ''}></td>
         <td class="mono">${esc(item.code)}</td>
         <td>${esc(item.name)}</td>
         <td>${esc(item.size || '—')}</td>
         <td>
-          <button class="badge-btn" onclick="cycleRackStatus('${item.id}')" title="Click to change: Received → Tagged">
+          ${item.archived ? `<span class="badge rack-badge badge-${(item.category||'').toLowerCase() || 'not-set'}" style="${!item.category ? 'background:var(--sand);color:#aaa' : ''}">${item.category ? esc(item.category) : 'Not Set'}</span>`
+          : `<button class="badge-btn" onclick="cycleRackStatus('${item.id}')" title="Click to change: Received → Tagged">
             ${item.category
               ? `<span class="badge rack-badge badge-${item.category.toLowerCase()}">${esc(item.category)}</span>`
               : `<span class="badge rack-badge" style="background:var(--sand);color:#aaa">Not Set</span>`
             }
-          </button>
+          </button>`}
         </td>
         <td>${esc(item.owner || '—')}</td>
         <td>${item.dateAdded ? fmtDate(item.dateAdded) : '—'}</td>
         <td>
-          <button class="badge-btn" onclick="cycleStatus('${item.id}')" title="Click to change status: Available → Sold → Returned">
-            <span class="badge badge-${item.status.toLowerCase()}">${esc(item.status)}</span>
-          </button>
+          ${item.archived ? `<span class="badge status-badge badge-${statusClass(item.status)}">${esc(item.status)}</span>`
+          : `<button class="badge-btn" onclick="cycleStatus('${item.id}')" title="Click to change: Available → Sold → Payment Processed → Returned">
+            <span class="badge status-badge badge-${statusClass(item.status)}">${esc(item.status)}</span>
+          </button>`}
         </td>
         <td class="number">${item.salePrice > 0 ? fmt(item.salePrice) : '—'}</td>
         <td class="number">${item.commissionPct > 0 ? item.commissionPct + '%' : '—'}</td>
         <td class="number">${item.commissionAmt > 0 ? fmt(item.commissionAmt) : '—'}</td>
         <td class="number" style="font-weight:500;color:var(--green)">${item.finalPayout > 0 ? fmt(item.finalPayout) : '—'}</td>
         <td class="actions">
-          <button class="btn btn-outline btn-sm" onclick="openModal('${item.id}')">Edit</button>
-          <button class="btn btn-danger btn-sm" onclick="deleteItem('${item.id}')" style="margin-left:.3rem">Del</button>
+          ${item.archived
+            ? `<button class="btn btn-outline btn-sm" onclick="restoreItem('${item.id}')">Restore</button>`
+            : `<button class="btn btn-outline btn-sm" onclick="openModal('${item.id}')">Edit</button>
+               <button class="btn btn-danger btn-sm" onclick="deleteItem('${item.id}')" style="margin-left:.3rem">Del</button>`
+          }
         </td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
   }
   syncSelectAllCheckbox();
 
