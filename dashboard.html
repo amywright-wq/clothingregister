@@ -104,6 +104,27 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
 .calc-preview .cp-item .cp-lbl { font-size: .7rem; text-transform: uppercase; letter-spacing: .08em; color: var(--brown-lt); margin-bottom: .2rem; }
 .calc-preview .cp-item .cp-val { font-family: 'Cormorant Garamond', serif; font-size: 1.25rem; color: var(--brown); font-weight: 600; }
 
+/* CHECKBOXES + ROW SELECTION */
+.cb-col { width: 38px; text-align: center; }
+.cb-col input[type=checkbox] { cursor: pointer; accent-color: var(--brown); width: 15px; height: 15px; vertical-align: middle; }
+.table-wrap tbody tr.row-selected { background: #FFF8ED; }
+.table-wrap tbody tr.row-selected:hover { background: #FFF1D6; }
+
+/* CLICKABLE STATUS BADGE */
+.badge-btn { cursor: pointer; background: none; border: none; padding: 0; display: inline-block; }
+.badge-btn:hover .badge { opacity: .75; }
+.badge-btn:active .badge { transform: scale(.95); }
+
+/* SELECTION SUMMARY BAR */
+.sel-bar { background: var(--brown); color: var(--cream); border-radius: 10px; padding: .9rem 1.2rem; margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .8rem; animation: slideIn .18s ease; }
+.sel-bar-left { font-size: .84rem; opacity: .85; }
+.sel-bar-left strong { font-size: .95rem; opacity: 1; }
+.sel-bar-stats { display: flex; gap: 1.6rem; flex-wrap: wrap; }
+.sel-stat { font-size: .78rem; text-align: right; }
+.sel-stat .sv { font-family: 'Cormorant Garamond', serif; font-size: 1.15rem; font-weight: 600; display: block; line-height: 1.1; }
+.sel-stat .sl { opacity: .7; font-size: .7rem; text-transform: uppercase; letter-spacing: .07em; }
+.sel-payout .sv { color: var(--accent); }
+
 /* PAGINATION */
 .pagination { display: flex; align-items: center; justify-content: space-between; padding: .9rem 1rem; border-top: 1px solid var(--sand); font-size: .82rem; color: #aaa; flex-wrap: wrap; gap: .5rem; }
 .pag-btns { display: flex; gap: .4rem; }
@@ -247,11 +268,32 @@ header .sub { margin-top: .3rem; font-size: .8rem; opacity: .75; letter-spacing:
     <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
   </div>
 
+  <!-- SELECTION SUMMARY BAR (visible when rows are ticked) -->
+  <div class="sel-bar" id="selectionBar" style="display:none">
+    <div class="sel-bar-left"><strong id="selCount">0 items</strong> selected</div>
+    <div class="sel-bar-stats">
+      <div class="sel-stat">
+        <span class="sv" id="selRevenue">$0.00</span>
+        <span class="sl">Sale Price</span>
+      </div>
+      <div class="sel-stat">
+        <span class="sv" id="selCommission">$0.00</span>
+        <span class="sl">Commission</span>
+      </div>
+      <div class="sel-stat sel-payout">
+        <span class="sv" id="selPayout">$0.00</span>
+        <span class="sl">Payout Owed</span>
+      </div>
+    </div>
+    <button class="btn btn-outline btn-sm" style="border-color:rgba(255,255,255,.4);color:var(--cream)" onclick="clearSelection()">Clear</button>
+  </div>
+
   <!-- TABLE -->
   <div class="table-wrap">
     <table>
       <thead>
         <tr id="tableHead">
+          <th class="cb-col"><input type="checkbox" id="selectAllCb" title="Select all on this page" onchange="toggleSelectAll(this)"></th>
           <th onclick="sortBy('code')">Item Code <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('name')">Name / Description <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('size')">Size <span class="sort-icon">↕</span></th>
@@ -635,6 +677,85 @@ function sortBy(col) {
   applyFilters();
 }
 
+// ── STATUS CYCLING ────────────────────────────────────────────────────────────
+const STATUS_NEXT = { 'Available': 'Sold', 'Sold': 'Returned', 'Returned': 'Available' };
+
+async function cycleStatus(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const prev = item.status;
+  item.status = STATUS_NEXT[prev] || 'Available';
+  // Update badge in place instantly, then sync to DB
+  const badge = document.querySelector(`tr[data-id="${id}"] .badge`);
+  if (badge) {
+    badge.className = 'badge badge-' + item.status.toLowerCase();
+    badge.textContent = item.status;
+  }
+  try {
+    await db.upsert(toRow(item));
+    render(); // refresh stats + charts
+  } catch (err) {
+    item.status = prev; // revert on failure
+    alert('Could not update status: ' + err.message);
+    render();
+  }
+}
+
+// ── ROW SELECTION ─────────────────────────────────────────────────────────────
+let selectedIds = new Set();
+
+function toggleSelect(id) {
+  if (selectedIds.has(id)) selectedIds.delete(id);
+  else selectedIds.add(id);
+  // Update just this row without re-rendering the whole table
+  const row = document.querySelector(`tr[data-id="${id}"]`);
+  if (row) {
+    row.classList.toggle('row-selected', selectedIds.has(id));
+    const cb = row.querySelector('.row-cb');
+    if (cb) cb.checked = selectedIds.has(id);
+  }
+  syncSelectAllCheckbox();
+  renderSelectionBar();
+}
+
+function toggleSelectAll(cb) {
+  const pageIds = getCurrentPageIds();
+  pageIds.forEach(id => { if (cb.checked) selectedIds.add(id); else selectedIds.delete(id); });
+  renderTable();
+  renderSelectionBar();
+}
+
+function clearSelection() {
+  selectedIds.clear();
+  renderTable();
+  renderSelectionBar();
+}
+
+function getCurrentPageIds() {
+  const start = (currentPage - 1) * PAGE_SIZE;
+  return filteredItems.slice(start, start + PAGE_SIZE).map(i => i.id);
+}
+
+function syncSelectAllCheckbox() {
+  const cb = document.getElementById('selectAllCb');
+  if (!cb) return;
+  const pageIds = getCurrentPageIds();
+  cb.checked = pageIds.length > 0 && pageIds.every(id => selectedIds.has(id));
+  cb.indeterminate = !cb.checked && pageIds.some(id => selectedIds.has(id));
+}
+
+function renderSelectionBar() {
+  const bar = document.getElementById('selectionBar');
+  if (!bar) return;
+  if (selectedIds.size === 0) { bar.style.display = 'none'; return; }
+  const sel = items.filter(i => selectedIds.has(i.id));
+  document.getElementById('selCount').textContent       = selectedIds.size + ' item' + (selectedIds.size !== 1 ? 's' : '');
+  document.getElementById('selRevenue').textContent     = fmt(sel.reduce((s,i) => s + (i.salePrice    || 0), 0));
+  document.getElementById('selCommission').textContent  = fmt(sel.reduce((s,i) => s + (i.commissionAmt|| 0), 0));
+  document.getElementById('selPayout').textContent      = fmt(sel.reduce((s,i) => s + (i.finalPayout  || 0), 0));
+  bar.style.display = 'flex';
+}
+
 // ── REVIEW BANNER (items from form with no category) ─────────────────────────
 function renderReviewBanner() {
   const uncategorised = items.filter(i => !i.category && i.code.startsWith('IT-'));
@@ -661,12 +782,12 @@ function filterUncategorised() {
 }
 
 // ── RENDER ─────────────────────────────────────────────────────────────────────
-function render() { populateSupplierFilter(); applyFilters(); applySummaryFilters(); renderReviewBanner(); }
+function render() { populateSupplierFilter(); applyFilters(); applySummaryFilters(); renderReviewBanner(); renderSelectionBar(); }
 
 function renderTable() {
   const tbody = document.getElementById('tableBody');
   if (isLoading) {
-    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state"><p style="opacity:.45">Loading inventory…</p></div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state"><p style="opacity:.45">Loading inventory…</p></div></td></tr>`;
     return;
   }
   const total = filteredItems.length;
@@ -676,20 +797,25 @@ function renderTable() {
   const slice = filteredItems.slice(start, start + PAGE_SIZE);
 
   if (slice.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state">
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">
       <div style="font-size:2rem;opacity:.25">🏷</div>
       <p>No items found. Add your first item or adjust your filters.</p>
     </div></td></tr>`;
   } else {
     tbody.innerHTML = slice.map(item => `
-      <tr>
+      <tr data-id="${item.id}" class="${selectedIds.has(item.id) ? 'row-selected' : ''}">
+        <td class="cb-col"><input type="checkbox" class="row-cb" ${selectedIds.has(item.id) ? 'checked' : ''} onclick="toggleSelect('${item.id}')"></td>
         <td class="mono">${esc(item.code)}</td>
         <td>${esc(item.name)}</td>
         <td>${esc(item.size || '—')}</td>
         <td>${esc(item.category || '—')}</td>
         <td>${esc(item.owner || '—')}</td>
         <td>${item.dateAdded ? fmtDate(item.dateAdded) : '—'}</td>
-        <td><span class="badge badge-${item.status.toLowerCase()}">${esc(item.status)}</span></td>
+        <td>
+          <button class="badge-btn" onclick="cycleStatus('${item.id}')" title="Click to change status: Available → Sold → Returned">
+            <span class="badge badge-${item.status.toLowerCase()}">${esc(item.status)}</span>
+          </button>
+        </td>
         <td class="number">${item.salePrice > 0 ? fmt(item.salePrice) : '—'}</td>
         <td class="number">${item.commissionPct > 0 ? item.commissionPct + '%' : '—'}</td>
         <td class="number">${item.commissionAmt > 0 ? fmt(item.commissionAmt) : '—'}</td>
@@ -701,6 +827,7 @@ function renderTable() {
       </tr>
     `).join('');
   }
+  syncSelectAllCheckbox();
 
   // Pagination
   const pag = document.getElementById('paginationBar');
@@ -916,7 +1043,7 @@ function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;'
   } catch (err) {
     setLoading(false);
     document.getElementById('tableBody').innerHTML =
-      `<tr><td colspan="12"><div class="empty-state">
+      `<tr><td colspan="13"><div class="empty-state">
         <p style="color:var(--red)">Could not connect to the database.</p>
         <p style="font-size:.8rem;opacity:.55;margin-top:.4rem">
           Check SUPABASE_URL and SUPABASE_ANON_KEY in config.js<br>
