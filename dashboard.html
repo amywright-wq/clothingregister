@@ -90,6 +90,14 @@ header .sub::after { content: ' —'; }
 .badge-received  { background: #F2EBE4; color: #7A4530; }
 .badge-tagged    { background: #E6EFF5; color: #3D6880; }
 .badge-payment-processed { background: #EDE8F0; color: #5B3E78; }
+
+/* CLOTHING TYPE BADGES */
+.badge-tops              { background: #F0E4F7; color: #5B3E78; }
+.badge-pants             { background: #E3F2FD; color: #1565C0; }
+.badge-dresses           { background: #FCE4EC; color: #C2185B; }
+.badge-outerwear         { background: #E8F5E9; color: #2E7D32; }
+.badge-shoes-accessories { background: #FFF3E0; color: #E65100; }
+
 .row-archived td         { opacity: .35; }
 .row-archived td.actions { opacity: 1; }
 
@@ -304,10 +312,21 @@ header .sub::after { content: ' —'; }
       <option>Payment Processed</option>
       <option>Returned</option>
     </select>
+    <select id="filterClothingType" onchange="applyFilters()">
+      <option value="">All Item Types</option>
+      <option>Tops</option>
+      <option>Pants</option>
+      <option>Dresses</option>
+      <option>Outerwear</option>
+      <option>Shoes & Accessories</option>
+    </select>
     <select id="filterCategory" onchange="applyFilters()">
       <option value="">All Rack Statuses</option>
       <option>Received</option>
       <option>Tagged</option>
+    </select>
+    <select id="filterSupplier" onchange="applyFilters()">
+      <option value="">All Suppliers</option>
     </select>
     <button class="btn btn-outline" onclick="clearFilters()">Clear Filters</button>
     <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
@@ -315,6 +334,7 @@ header .sub::after { content: ' —'; }
     <button class="btn btn-outline" onclick="openImportCSVModal()">Import CSV</button>
     <button class="btn btn-outline" id="toggleArchivedBtn" onclick="toggleShowArchived()">Show Archived</button>
     <button class="btn btn-outline" onclick="openArchiveCycleModal()">Archive Cycle</button>
+    <button class="btn btn-outline" onclick="openSupplierReportModal()">Supplier Report</button>
   </div>
 
   <!-- SELECTION SUMMARY BAR (visible when rows are ticked) -->
@@ -349,6 +369,7 @@ header .sub::after { content: ' —'; }
           <th onclick="sortBy('code')">Item Code <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('name')">Name / Description <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('size')">Size <span class="sort-icon">↕</span></th>
+          <th onclick="sortBy('clothingType')">Item Type <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('category')">Rack Status <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('owner')">Supplier / Owner <span class="sort-icon">↕</span></th>
           <th onclick="sortBy('dateAdded')">Date Added <span class="sort-icon">↕</span></th>
@@ -389,6 +410,17 @@ header .sub::after { content: ' —'; }
         <div class="form-field">
           <label>Size</label>
           <input type="text" id="fSize" placeholder="e.g. S, M, 10, 32W">
+        </div>
+        <div class="form-field">
+          <label>Item Type</label>
+          <select id="fClothingType">
+            <option value="">— select —</option>
+            <option>Tops</option>
+            <option>Pants</option>
+            <option>Dresses</option>
+            <option>Outerwear</option>
+            <option>Shoes & Accessories</option>
+          </select>
         </div>
         <div class="form-field">
           <label>Rack Status</label>
@@ -496,7 +528,7 @@ header .sub::after { content: ' —'; }
       <div style="background:var(--terra-lt);border-radius:6px;padding:1.1rem;margin-bottom:1.2rem;border-left:3px solid var(--brown)">
         <p style="font-size:.78rem;color:var(--brown);margin:0"><strong>Required Columns:</strong></p>
         <p style="font-size:.75rem;color:var(--brown-lt);margin-top:.4rem;line-height:1.5">
-          Item Code, Name, Size, Rack Status, Supplier/Owner, Date Added, Status, Sale Price, Commission %, Commission Amount, Final Payout
+          Item Code, Name, Size, Item Type, Rack Status, Supplier/Owner, Date Added, Status, Sale Price, Commission %, Commission Amount, Final Payout
         </p>
       </div>
       <div class="form-field full" style="margin-bottom:1rem">
@@ -516,6 +548,71 @@ header .sub::after { content: ' —'; }
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeImportCSVModal()">Cancel</button>
       <button class="btn btn-primary" id="csvImportBtn" onclick="importCSVData()" disabled>Import</button>
+    </div>
+  </div>
+</div>
+
+<!-- SUPPLIER REPORT MODAL -->
+<div class="overlay" id="reportSelectOverlay" onclick="reportSelectOverlayClick(event)">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-header">
+      <h2>Supplier Report</h2>
+      <button class="modal-close" onclick="closeSupplierReportModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.88rem;line-height:1.55;color:var(--brown-lt);margin-bottom:1.2rem">
+        Select a supplier to view their inventory status, sold items, and payout information.
+      </p>
+      <div class="form-row">
+        <div class="form-field full">
+          <label>Supplier / Owner</label>
+          <select id="reportSupplierSelect" onchange="updateReportPreview()">
+            <option value="">— select supplier —</option>
+          </select>
+        </div>
+      </div>
+      <div id="reportStats" style="display:none;background:var(--terra-lt);border-radius:6px;padding:1rem;margin-top:1rem;border-left:3px solid var(--brown)">
+        <p style="font-size:.75rem;text-transform:uppercase;letter-spacing:.08em;color:var(--brown);margin:0 0 .6rem 0;font-weight:600">Quick Summary</p>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:.8rem;font-size:.8rem">
+          <div>
+            <p style="color:var(--brown-lt);margin:0 0 .2rem 0">Available Items</p>
+            <p style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--brown);margin:0;font-weight:700" id="repAvailable">0</p>
+          </div>
+          <div>
+            <p style="color:var(--brown-lt);margin:0 0 .2rem 0">Sold Items</p>
+            <p style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--brown);margin:0;font-weight:700" id="repSold">0</p>
+          </div>
+          <div>
+            <p style="color:var(--brown-lt);margin:0 0 .2rem 0">Total Payout Owed</p>
+            <p style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--accent);margin:0;font-weight:700" id="repPayout">$0.00</p>
+          </div>
+          <div>
+            <p style="color:var(--brown-lt);margin:0 0 .2rem 0">Total Revenue</p>
+            <p style="font-family:'Playfair Display',serif;font-size:1.4rem;color:var(--brown);margin:0;font-weight:700" id="repRevenue">$0.00</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeSupplierReportModal()">Cancel</button>
+      <button class="btn btn-primary" id="reportGenerateBtn" onclick="generateSupplierReport()" disabled>View Full Report</button>
+    </div>
+  </div>
+</div>
+
+<!-- FULL SUPPLIER REPORT VIEW -->
+<div class="overlay" id="reportViewOverlay" onclick="reportViewOverlayClick(event)" style="display:none;z-index:101">
+  <div class="modal" style="max-width:900px;max-height:90vh">
+    <div class="modal-header">
+      <h2 id="reportTitle">Supplier Report</h2>
+      <button class="modal-close" onclick="closeReportView()">✕</button>
+    </div>
+    <div class="modal-body" id="reportContent" style="overflow-y:auto;max-height:calc(90vh - 200px)">
+      <!-- Report content will be generated here -->
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="printSupplierReport()">🖨 Print</button>
+      <button class="btn btn-outline" onclick="closeReportView()">Close</button>
     </div>
   </div>
 </div>
@@ -557,6 +654,7 @@ function toRow(item) {
   return {
     id: item.id, code: item.code, name: item.name,
     size:           item.size        || null,
+    clothing_type:  item.clothingType|| null,
     category:       item.category    || null,
     owner:          item.owner       || null,
     date_added:     item.dateAdded   || null,
@@ -572,6 +670,7 @@ function fromRow(row) {
   return {
     id:            row.id,   code:     row.code,   name: row.name,
     size:          row.size          || '',
+    clothingType:  row.clothing_type || '',
     category:      row.category      || '',
     owner:         row.owner         || '',
     dateAdded:     row.date_added    || '',
@@ -627,15 +726,16 @@ function openModal(id) {
   editId = id || null;
   const item = id ? items.find(i => i.id === id) : null;
   document.getElementById('modalTitle').textContent = id ? 'Edit Item' : 'Add New Item';
-  document.getElementById('fCode').value      = item ? item.code      : nextCode();
-  document.getElementById('fName').value      = item ? item.name      : '';
-  document.getElementById('fSize').value      = item ? item.size      : '';
-  document.getElementById('fCategory').value  = item ? item.category  : '';
-  document.getElementById('fStatus').value    = item ? item.status    : 'Available';
-  document.getElementById('fOwner').value     = item ? item.owner     : '';
-  document.getElementById('fDate').value      = item ? item.dateAdded : new Date().toISOString().slice(0,10);
-  document.getElementById('fSalePrice').value = item ? item.salePrice : '';
-  document.getElementById('fCommPct').value   = item ? item.commissionPct : '';
+  document.getElementById('fCode').value       = item ? item.code       : nextCode();
+  document.getElementById('fName').value       = item ? item.name       : '';
+  document.getElementById('fSize').value       = item ? item.size       : '';
+  document.getElementById('fClothingType').value = item ? item.clothingType : '';
+  document.getElementById('fCategory').value   = item ? item.category   : '';
+  document.getElementById('fStatus').value     = item ? item.status     : 'Available';
+  document.getElementById('fOwner').value      = item ? item.owner      : '';
+  document.getElementById('fDate').value       = item ? item.dateAdded  : new Date().toISOString().slice(0,10);
+  document.getElementById('fSalePrice').value  = item ? item.salePrice  : '';
+  document.getElementById('fCommPct').value    = item ? item.commissionPct : '';
   document.getElementById('formError').style.display = 'none';
   updateCalcPreview();
   document.getElementById('overlay').classList.add('open');
@@ -689,6 +789,7 @@ async function saveItem() {
     code,
     name,
     size:          document.getElementById('fSize').value.trim(),
+    clothingType:  document.getElementById('fClothingType').value,
     category:      document.getElementById('fCategory').value,
     status:        document.getElementById('fStatus').value,
     owner:         document.getElementById('fOwner').value.trim(),
@@ -745,16 +846,20 @@ function toggleShowArchived() {
 }
 
 function applyFilters() {
-  const q    = document.getElementById('searchInput').value.toLowerCase().trim();
-  const stat = document.getElementById('filterStatus').value;
-  const cat  = document.getElementById('filterCategory').value;
+  const q            = document.getElementById('searchInput').value.toLowerCase().trim();
+  const stat         = document.getElementById('filterStatus').value;
+  const clothingType = document.getElementById('filterClothingType').value;
+  const cat          = document.getElementById('filterCategory').value;
+  const supplier     = document.getElementById('filterSupplier').value;
 
   filteredItems = items.filter(i => {
     if (!showArchived && i.archived) return false;
-    const matchQ    = !q || [i.code, i.name, i.owner, i.size].some(v => (v||'').toLowerCase().includes(q));
-    const matchStat = !stat || i.status === stat;
-    const matchCat  = !cat  || i.category === cat;
-    return matchQ && matchStat && matchCat;
+    const matchQ           = !q || [i.code, i.name, i.owner, i.size].some(v => (v||'').toLowerCase().includes(q));
+    const matchStat        = !stat || i.status === stat;
+    const matchClothingType = !clothingType || i.clothingType === clothingType;
+    const matchCat         = !cat  || i.category === cat;
+    const matchSupplier    = !supplier || i.owner === supplier;
+    return matchQ && matchStat && matchClothingType && matchCat && matchSupplier;
   });
 
   filteredItems.sort((a, b) => {
@@ -771,7 +876,9 @@ function applyFilters() {
 function clearFilters() {
   document.getElementById('searchInput').value = '';
   document.getElementById('filterStatus').value = '';
+  document.getElementById('filterClothingType').value = '';
   document.getElementById('filterCategory').value = '';
+  document.getElementById('filterSupplier').value = '';
   applyFilters();
 }
 
@@ -781,7 +888,7 @@ function sortBy(col) {
   // update header icons
   document.querySelectorAll('#tableHead th').forEach(th => th.classList.remove('sorted'));
   const ths = document.querySelectorAll('#tableHead th');
-  const cols = ['code','name','size','category','owner','dateAdded','status','salePrice','commissionPct','commissionAmt','finalPayout','_actions'];
+  const cols = ['code','name','size','clothingType','category','owner','dateAdded','status','salePrice','commissionPct','commissionAmt','finalPayout','_actions'];
   const idx = cols.indexOf(col);
   if (idx >= 0 && ths[idx]) ths[idx].classList.add('sorted');
   applyFilters();
@@ -808,6 +915,39 @@ async function cycleStatus(id) {
   } catch (err) {
     item.status = prev; // revert on failure
     alert('Could not update status: ' + err.message);
+    render();
+  }
+}
+
+// ── CLOTHING TYPE CYCLING ─────────────────────────────────────────────────────
+const CLOTHING_TYPE_CYCLE = ['', 'Tops', 'Pants', 'Dresses', 'Outerwear', 'Shoes & Accessories'];
+
+async function cycleClothingType(id) {
+  const item = items.find(i => i.id === id);
+  if (!item) return;
+  const prev = item.clothingType || '';
+  const currentIdx = CLOTHING_TYPE_CYCLE.indexOf(prev);
+  const nextIdx = (currentIdx + 1) % CLOTHING_TYPE_CYCLE.length;
+  item.clothingType = CLOTHING_TYPE_CYCLE[nextIdx] || '';
+
+  const badge = document.querySelector(`tr[data-id="${id}"] .type-badge`);
+  if (badge) {
+    if (item.clothingType) {
+      badge.className = 'badge type-badge badge-' + item.clothingType.toLowerCase().replace(/\s+/g, '-');
+      badge.textContent = item.clothingType;
+    } else {
+      badge.className = 'badge type-badge';
+      badge.textContent = 'Not Set';
+      badge.style.background = 'var(--sand)';
+      badge.style.color = '#aaa';
+    }
+  }
+  try {
+    await db.upsert(toRow(item));
+    render();
+  } catch (err) {
+    item.clothingType = prev;
+    alert('Could not update item type: ' + err.message);
     render();
   }
 }
@@ -955,6 +1095,196 @@ async function archiveCycle() {
   } finally {
     btn.disabled = false; btn.textContent = 'Archive Cycle';
   }
+}
+
+// ── SUPPLIER REPORT ──────────────────────────────────────────────────────
+function openSupplierReportModal() {
+  const sel = document.getElementById('reportSupplierSelect');
+  const suppliers = [...new Set(items.map(i => i.owner).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">— select supplier —</option>' +
+    suppliers.map(s => `<option>${esc(s)}</option>`).join('');
+  document.getElementById('reportStats').style.display = 'none';
+  document.getElementById('reportGenerateBtn').disabled = true;
+  document.getElementById('reportSelectOverlay').classList.add('open');
+}
+
+function closeSupplierReportModal() {
+  document.getElementById('reportSelectOverlay').classList.remove('open');
+}
+
+function reportSelectOverlayClick(e) {
+  if (e.target === document.getElementById('reportSelectOverlay')) closeSupplierReportModal();
+}
+
+function updateReportPreview() {
+  const supplier = document.getElementById('reportSupplierSelect').value;
+  const btn = document.getElementById('reportGenerateBtn');
+
+  if (!supplier) {
+    document.getElementById('reportStats').style.display = 'none';
+    btn.disabled = true;
+    return;
+  }
+
+  const supplierItems = items.filter(i => i.owner === supplier);
+  const available = supplierItems.filter(i => i.status === 'Available').length;
+  const sold = supplierItems.filter(i => i.status === 'Sold').length;
+  const totalRevenue = supplierItems.filter(i => i.status === 'Sold').reduce((s, i) => s + (i.salePrice || 0), 0);
+  const totalPayout = supplierItems.filter(i => i.status === 'Sold').reduce((s, i) => s + (i.finalPayout || 0), 0);
+
+  document.getElementById('repAvailable').textContent = available;
+  document.getElementById('repSold').textContent = sold;
+  document.getElementById('repRevenue').textContent = fmt(totalRevenue);
+  document.getElementById('repPayout').textContent = fmt(totalPayout);
+  document.getElementById('reportStats').style.display = 'block';
+  btn.disabled = false;
+}
+
+function generateSupplierReport() {
+  const supplier = document.getElementById('reportSupplierSelect').value;
+  if (!supplier) return;
+
+  const supplierItems = items.filter(i => i.owner === supplier);
+  const available = supplierItems.filter(i => i.status === 'Available');
+  const sold = supplierItems.filter(i => i.status === 'Sold');
+  const returned = supplierItems.filter(i => i.status === 'Returned');
+
+  const totalRevenue = sold.reduce((s, i) => s + (i.salePrice || 0), 0);
+  const totalCommission = sold.reduce((s, i) => s + (i.commissionAmt || 0), 0);
+  const totalPayout = sold.reduce((s, i) => s + (i.finalPayout || 0), 0);
+
+  const today = new Date().toLocaleDateString('en-AU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+  let html = `
+    <div style="margin-bottom:2rem;padding-bottom:2rem;border-bottom:1px solid var(--sand)">
+      <h3 style="font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--bark);margin:0 0 .5rem 0;font-weight:700">${esc(supplier)}</h3>
+      <p style="color:var(--brown-lt);font-size:.85rem;margin:0">Report Generated: ${today}</p>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1rem;margin-bottom:2rem">
+      <div style="background:var(--green-lt);border:1px solid var(--green);border-radius:6px;padding:1.2rem">
+        <p style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--olive-dk);margin:0 0 .5rem 0;font-weight:600">Available Items</p>
+        <p style="font-family:'Playfair Display',serif;font-size:2rem;color:var(--olive-dk);margin:0;font-weight:700">${available.length}</p>
+      </div>
+      <div style="background:var(--red-lt);border:1px solid var(--red);border-radius:6px;padding:1.2rem">
+        <p style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--red);margin:0 0 .5rem 0;font-weight:600">Sold Items</p>
+        <p style="font-family:'Playfair Display',serif;font-size:2rem;color:var(--red);margin:0;font-weight:700">${sold.length}</p>
+      </div>
+      <div style="background:var(--sand);border:1px solid var(--brown-lt);border-radius:6px;padding:1.2rem">
+        <p style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--brown);margin:0 0 .5rem 0;font-weight:600">Total Revenue</p>
+        <p style="font-family:'Playfair Display',serif;font-size:2rem;color:var(--brown);margin:0;font-weight:700">${fmt(totalRevenue)}</p>
+      </div>
+      <div style="background:#FFF8ED;border:1px solid var(--accent);border-radius:6px;padding:1.2rem">
+        <p style="font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:0 0 .5rem 0;font-weight:600">Payout Owed</p>
+        <p style="font-family:'Playfair Display',serif;font-size:2rem;color:var(--accent);margin:0;font-weight:700">${fmt(totalPayout)}</p>
+      </div>
+    </div>
+
+    ${available.length > 0 ? `
+    <div style="margin-bottom:2rem">
+      <h4 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--bark);margin:0 0 1rem 0;font-weight:700;padding-bottom:.5rem;border-bottom:2px solid var(--brown)">Available Items (${available.length})</h4>
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+        <thead>
+          <tr style="background:var(--bark);color:var(--cream)">
+            <th style="padding:.8rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Code</th>
+            <th style="padding:.8rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Name</th>
+            <th style="padding:.8rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Size</th>
+            <th style="padding:.8rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Type</th>
+            <th style="padding:.8rem;text-align:right;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${available.map((i, idx) => `
+            <tr style="border-bottom:1px solid var(--sand);background:${idx%2?'#fff':'#fafaf8'}">
+              <td style="padding:.7rem .8rem;font-family:monospace;color:var(--brown-lt)">${esc(i.code)}</td>
+              <td style="padding:.7rem .8rem">${esc(i.name)}</td>
+              <td style="padding:.7rem .8rem">${esc(i.size || '—')}</td>
+              <td style="padding:.7rem .8rem">${esc(i.clothingType || '—')}</td>
+              <td style="padding:.7rem .8rem;text-align:right;font-weight:500">${fmt(i.salePrice || 0)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    ` : ''}
+
+    ${sold.length > 0 ? `
+    <div style="margin-bottom:2rem">
+      <h4 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--bark);margin:0 0 1rem 0;font-weight:700;padding-bottom:.5rem;border-bottom:2px solid var(--brown)">Sold Items (${sold.length})</h4>
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+        <thead>
+          <tr style="background:var(--bark);color:var(--cream)">
+            <th style="padding:.8rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Code</th>
+            <th style="padding:.8rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Name</th>
+            <th style="padding:.8rem;text-align:right;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Sale Price</th>
+            <th style="padding:.8rem;text-align:right;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Commission</th>
+            <th style="padding:.8rem;text-align:right;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Payout</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${sold.map((i, idx) => `
+            <tr style="border-bottom:1px solid var(--sand);background:${idx%2?'#fff':'#fafaf8'}">
+              <td style="padding:.7rem .8rem;font-family:monospace;color:var(--brown-lt)">${esc(i.code)}</td>
+              <td style="padding:.7rem .8rem">${esc(i.name)}</td>
+              <td style="padding:.7rem .8rem;text-align:right;font-weight:500">${fmt(i.salePrice || 0)}</td>
+              <td style="padding:.7rem .8rem;text-align:right;font-weight:500;color:var(--brown-lt)">${fmt(i.commissionAmt || 0)}</td>
+              <td style="padding:.7rem .8rem;text-align:right;font-weight:600;color:var(--accent)">${fmt(i.finalPayout || 0)}</td>
+            </tr>
+          `).join('')}
+          <tr style="background:var(--bark);color:var(--cream);font-weight:600">
+            <td colspan="2" style="padding:.8rem;text-align:right">TOTALS:</td>
+            <td style="padding:.8rem;text-align:right">${fmt(totalRevenue)}</td>
+            <td style="padding:.8rem;text-align:right">${fmt(totalCommission)}</td>
+            <td style="padding:.8rem;text-align:right;color:var(--accent)">${fmt(totalPayout)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    ` : ''}
+
+    ${returned.length > 0 ? `
+    <div style="margin-bottom:2rem">
+      <h4 style="font-family:'Playfair Display',serif;font-size:1.2rem;color:var(--bark);margin:0 0 1rem 0;font-weight:700;padding-bottom:.5rem;border-bottom:2px solid var(--brown)">Returned Items (${returned.length})</h4>
+      <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+        <thead>
+          <tr style="background:var(--bark);color:var(--cream)">
+            <th style="padding:.8rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Code</th>
+            <th style="padding:.8rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Name</th>
+            <th style="padding:.8rem;text-align:left;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Size</th>
+            <th style="padding:.8rem;text-align:right;font-weight:600;font-size:.7rem;text-transform:uppercase;letter-spacing:.08em">Price</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${returned.map((i, idx) => `
+            <tr style="border-bottom:1px solid var(--sand);background:${idx%2?'#fff':'#fafaf8'}">
+              <td style="padding:.7rem .8rem;font-family:monospace;color:var(--brown-lt)">${esc(i.code)}</td>
+              <td style="padding:.7rem .8rem">${esc(i.name)}</td>
+              <td style="padding:.7rem .8rem">${esc(i.size || '—')}</td>
+              <td style="padding:.7rem .8rem;text-align:right;font-weight:500">${fmt(i.salePrice || 0)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    ` : ''}
+  `;
+
+  document.getElementById('reportTitle').textContent = `${supplier} — Inventory & Payout Report`;
+  document.getElementById('reportContent').innerHTML = html;
+  document.getElementById('reportViewOverlay').style.display = 'flex';
+  closeSupplierReportModal();
+}
+
+function closeReportView() {
+  document.getElementById('reportViewOverlay').style.display = 'none';
+}
+
+function reportViewOverlayClick(e) {
+  if (e.target === document.getElementById('reportViewOverlay')) closeReportView();
+}
+
+function printSupplierReport() {
+  window.print();
 }
 
 // ── DROP-OFF SCHEDULE ────────────────────────────────────────────────────────
@@ -1167,6 +1497,15 @@ function renderTable() {
         <td>${esc(item.name)}</td>
         <td>${esc(item.size || '—')}</td>
         <td>
+          ${item.archived ? `<span class="badge type-badge badge-${(item.clothingType||'').toLowerCase().replace(/\\s+/g,'-') || 'not-set'}" style="${!item.clothingType ? 'background:var(--sand);color:#aaa' : ''}">${item.clothingType ? esc(item.clothingType) : 'Not Set'}</span>`
+          : `<button class="badge-btn" onclick="cycleClothingType('${item.id}')" title="Click to cycle through clothing types">
+            ${item.clothingType
+              ? `<span class="badge type-badge badge-${item.clothingType.toLowerCase().replace(/\\s+/g,'-')}">${esc(item.clothingType)}</span>`
+              : `<span class="badge type-badge" style="background:var(--sand);color:#aaa">Not Set</span>`
+            }
+          </button>`}
+        </td>
+        <td>
           ${item.archived ? `<span class="badge rack-badge badge-${(item.category||'').toLowerCase() || 'not-set'}" style="${!item.category ? 'background:var(--sand);color:#aaa' : ''}">${item.category ? esc(item.category) : 'Not Set'}</span>`
           : `<button class="badge-btn" onclick="cycleRackStatus('${item.id}')" title="Click to change: Received → Tagged">
             ${item.category
@@ -1230,11 +1569,19 @@ function renderStats(dataset) {
 
 // ── SUMMARY FILTERS ───────────────────────────────────────────────────────────
 function populateSupplierFilter() {
-  const sel = document.getElementById('sfSupplier');
-  const current = sel.value;
   const suppliers = [...new Set(items.map(i => i.owner).filter(Boolean))].sort();
-  sel.innerHTML = '<option value="">All Suppliers</option>' +
-    suppliers.map(s => `<option${s === current ? ' selected' : ''}>${esc(s)}</option>`).join('');
+
+  // Update summary filters supplier dropdown
+  const sfSel = document.getElementById('sfSupplier');
+  const sfCurrent = sfSel.value;
+  sfSel.innerHTML = '<option value="">All Suppliers</option>' +
+    suppliers.map(s => `<option${s === sfCurrent ? ' selected' : ''}>${esc(s)}</option>`).join('');
+
+  // Update toolbar supplier filter dropdown
+  const toolbarSel = document.getElementById('filterSupplier');
+  const toolbarCurrent = toolbarSel.value;
+  toolbarSel.innerHTML = '<option value="">All Suppliers</option>' +
+    suppliers.map(s => `<option${s === toolbarCurrent ? ' selected' : ''}>${esc(s)}</option>`).join('');
 }
 
 function applySummaryFilters() {
@@ -1387,9 +1734,9 @@ function renderCategoryChart(dataset) {
 
 // ── EXPORT / IMPORT CSV ───────────────────────────────────────────────────────
 function exportCSV() {
-  const cols = ['Item Code','Name','Size','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
+  const cols = ['Item Code','Name','Size','Item Type','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
   const rows = filteredItems.map(i => [
-    i.code, i.name, i.size, i.category, i.owner, i.dateAdded,
+    i.code, i.name, i.size, i.clothingType, i.category, i.owner, i.dateAdded,
     i.status, i.salePrice, i.commissionPct, i.commissionAmt, i.finalPayout
   ].map(v => `"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
   const csv  = [cols.join(','), ...rows].join('\n');
@@ -1401,11 +1748,11 @@ function exportCSV() {
 }
 
 function downloadCSVTemplate() {
-  const cols = ['Item Code','Name','Size','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
+  const cols = ['Item Code','Name','Size','Item Type','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
   const exampleRows = [
-    ['BOR-001', 'Floral Wrap Dress', 'M', 'Tagged', 'Sarah Chen', '2024-05-01', 'Available', '65.00', '30', '19.50', '45.50'],
-    ['BOR-002', 'Vintage Leather Jacket', 'L', 'Received', 'John Smith', '2024-05-02', 'Sold', '120.00', '25', '30.00', '90.00'],
-    ['BOR-003', 'Linen Blouse', 'S', 'Tagged', 'Jane Doe', '2024-05-03', 'Available', '45.00', '30', '', ''],
+    ['BOR-001', 'Floral Wrap Dress', 'M', 'Dresses', 'Tagged', 'Sarah Chen', '2024-05-01', 'Available', '65.00', '30', '19.50', '45.50'],
+    ['BOR-002', 'Vintage Leather Jacket', 'L', 'Outerwear', 'Received', 'John Smith', '2024-05-02', 'Sold', '120.00', '25', '30.00', '90.00'],
+    ['BOR-003', 'Linen Blouse', 'S', 'Tops', 'Tagged', 'Jane Doe', '2024-05-03', 'Available', '45.00', '30', '', ''],
   ];
   const rows = exampleRows.map(r => r.map(v => `"${v}"`).join(','));
   const csv = [cols.join(','), ...rows].join('\n');
@@ -1444,7 +1791,7 @@ function parseCSV(text) {
   if (lines.length < 2) throw new Error('CSV must have header row and at least one data row.');
 
   const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-  const expectedCols = ['Item Code','Name','Size','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
+  const expectedCols = ['Item Code','Name','Size','Item Type','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
 
   const missingCols = expectedCols.filter(col => !header.includes(col));
   if (missingCols.length > 0) {
@@ -1498,7 +1845,7 @@ document.getElementById('csvFileInput')?.addEventListener('change', (e) => {
       const headRow = document.getElementById('csvPreviewHead');
       const bodyRows = document.getElementById('csvPreviewBody');
 
-      const cols = ['Item Code','Name','Size','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %'];
+      const cols = ['Item Code','Name','Size','Item Type','Rack Status','Supplier/Owner','Date Added','Status'];
       headRow.innerHTML = cols.map(c => `<th style="border-bottom:1px solid var(--sand);padding:.4rem;text-align:left;font-weight:600">${c}</th>`).join('');
 
       bodyRows.innerHTML = preview.map((row, idx) =>
@@ -1556,6 +1903,7 @@ async function importCSVData() {
         code,
         name,
         size:          (row['Size'] || '').trim(),
+        clothingType:  (row['Item Type'] || '').trim() || null,
         category:      (row['Rack Status'] || '').trim() || null,
         owner:         (row['Supplier/Owner'] || '').trim(),
         dateAdded:     (row['Date Added'] || '').trim(),
