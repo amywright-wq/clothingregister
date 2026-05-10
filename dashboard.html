@@ -311,6 +311,8 @@ header .sub::after { content: ' —'; }
     </select>
     <button class="btn btn-outline" onclick="clearFilters()">Clear Filters</button>
     <button class="btn btn-outline" onclick="exportCSV()">Export CSV</button>
+    <button class="btn btn-outline" onclick="downloadCSVTemplate()">CSV Template</button>
+    <button class="btn btn-outline" onclick="openImportCSVModal()">Import CSV</button>
     <button class="btn btn-outline" id="toggleArchivedBtn" onclick="toggleShowArchived()">Show Archived</button>
     <button class="btn btn-outline" onclick="openArchiveCycleModal()">Archive Cycle</button>
   </div>
@@ -475,6 +477,45 @@ header .sub::after { content: ' —'; }
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="closeArchiveModal()">Cancel</button>
       <button class="btn btn-primary" onclick="archiveCycle()">Archive Cycle</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT CSV MODAL -->
+<div class="overlay" id="importCSVOverlay" onclick="importCSVOverlayClick(event)">
+  <div class="modal" style="max-width:580px">
+    <div class="modal-header">
+      <h2>Import Inventory from CSV</h2>
+      <button class="modal-close" onclick="closeImportCSVModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:.88rem;line-height:1.55;color:var(--brown-lt);margin-bottom:1.2rem">
+        Upload a CSV file matching the template format. Make sure all required columns are present.
+        Items with duplicate codes will be updated; new items will be added.
+      </p>
+      <div style="background:var(--terra-lt);border-radius:6px;padding:1.1rem;margin-bottom:1.2rem;border-left:3px solid var(--brown)">
+        <p style="font-size:.78rem;color:var(--brown);margin:0"><strong>Required Columns:</strong></p>
+        <p style="font-size:.75rem;color:var(--brown-lt);margin-top:.4rem;line-height:1.5">
+          Item Code, Name, Size, Rack Status, Supplier/Owner, Date Added, Status, Sale Price, Commission %, Commission Amount, Final Payout
+        </p>
+      </div>
+      <div class="form-field full" style="margin-bottom:1rem">
+        <label>Select CSV File</label>
+        <input type="file" id="csvFileInput" accept=".csv" style="padding:.7rem .8rem;border:2px dashed var(--sand);background:#fff;cursor:pointer">
+        <p id="csvError" style="color:var(--error);font-size:.75rem;margin-top:.3rem;display:none"></p>
+      </div>
+      <div id="csvPreview" style="display:none;background:#fafaf8;border:1px solid var(--sand);border-radius:6px;padding:1rem;max-height:300px;overflow-y:auto;margin-bottom:1rem">
+        <p style="font-size:.78rem;font-weight:600;color:var(--bark);margin-bottom:.5rem">Preview (first 5 rows):</p>
+        <table style="width:100%;font-size:.72rem;border-collapse:collapse">
+          <thead id="csvPreviewHead"></thead>
+          <tbody id="csvPreviewBody"></tbody>
+        </table>
+      </div>
+      <p id="csvStats" style="font-size:.8rem;color:var(--brown);margin-top:.3rem;display:none"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeImportCSVModal()">Cancel</button>
+      <button class="btn btn-primary" id="csvImportBtn" onclick="importCSVData()" disabled>Import</button>
     </div>
   </div>
 </div>
@@ -1344,7 +1385,7 @@ function renderCategoryChart(dataset) {
   });
 }
 
-// ── EXPORT CSV ────────────────────────────────────────────────────────────────
+// ── EXPORT / IMPORT CSV ───────────────────────────────────────────────────────
 function exportCSV() {
   const cols = ['Item Code','Name','Size','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
   const rows = filteredItems.map(i => [
@@ -1357,6 +1398,195 @@ function exportCSV() {
   const a    = Object.assign(document.createElement('a'), { href: url, download: 'botr-inventory.csv' });
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function downloadCSVTemplate() {
+  const cols = ['Item Code','Name','Size','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
+  const exampleRows = [
+    ['BOR-001', 'Floral Wrap Dress', 'M', 'Tagged', 'Sarah Chen', '2024-05-01', 'Available', '65.00', '30', '19.50', '45.50'],
+    ['BOR-002', 'Vintage Leather Jacket', 'L', 'Received', 'John Smith', '2024-05-02', 'Sold', '120.00', '25', '30.00', '90.00'],
+    ['BOR-003', 'Linen Blouse', 'S', 'Tagged', 'Jane Doe', '2024-05-03', 'Available', '45.00', '30', '', ''],
+  ];
+  const rows = exampleRows.map(r => r.map(v => `"${v}"`).join(','));
+  const csv = [cols.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = Object.assign(document.createElement('a'), { href: url, download: 'botr-inventory-template.csv' });
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// CSV Import state
+let csvData = null;
+let csvParsedRows = [];
+
+function openImportCSVModal() {
+  csvData = null;
+  csvParsedRows = [];
+  document.getElementById('csvFileInput').value = '';
+  document.getElementById('csvError').style.display = 'none';
+  document.getElementById('csvPreview').style.display = 'none';
+  document.getElementById('csvStats').style.display = 'none';
+  document.getElementById('csvImportBtn').disabled = true;
+  document.getElementById('importCSVOverlay').classList.add('open');
+}
+
+function closeImportCSVModal() {
+  document.getElementById('importCSVOverlay').classList.remove('open');
+}
+
+function importCSVOverlayClick(e) {
+  if (e.target === document.getElementById('importCSVOverlay')) closeImportCSVModal();
+}
+
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) throw new Error('CSV must have header row and at least one data row.');
+
+  const header = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
+  const expectedCols = ['Item Code','Name','Size','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %','Commission Amount','Final Payout'];
+
+  const missingCols = expectedCols.filter(col => !header.includes(col));
+  if (missingCols.length > 0) {
+    throw new Error(`Missing required columns: ${missingCols.join(', ')}`);
+  }
+
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+
+    const values = [];
+    let current = '';
+    let inQuotes = false;
+    for (let j = 0; j < line.length; j++) {
+      const char = line[j];
+      if (char === '"') {
+        inQuotes = !inQuotes;
+      } else if (char === ',' && !inQuotes) {
+        values.push(current.replace(/^"|"$/g, '').trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+    values.push(current.replace(/^"|"$/g, '').trim());
+
+    const obj = {};
+    header.forEach((col, idx) => { obj[col] = values[idx] || ''; });
+    rows.push(obj);
+  }
+  return rows;
+}
+
+document.getElementById('csvFileInput')?.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = (evt) => {
+    try {
+      csvParsedRows = parseCSV(evt.target.result);
+      csvData = evt.target.result;
+
+      if (csvParsedRows.length === 0) throw new Error('No data rows found.');
+
+      document.getElementById('csvError').style.display = 'none';
+      document.getElementById('csvImportBtn').disabled = false;
+
+      const preview = csvParsedRows.slice(0, 5);
+      const headRow = document.getElementById('csvPreviewHead');
+      const bodyRows = document.getElementById('csvPreviewBody');
+
+      const cols = ['Item Code','Name','Size','Rack Status','Supplier/Owner','Date Added','Status','Sale Price','Commission %'];
+      headRow.innerHTML = cols.map(c => `<th style="border-bottom:1px solid var(--sand);padding:.4rem;text-align:left;font-weight:600">${c}</th>`).join('');
+
+      bodyRows.innerHTML = preview.map((row, idx) =>
+        `<tr style="border-bottom:1px solid #f0f0f0;background:${idx%2?'#fff':'#fafaf8'}">
+          ${cols.map(c => `<td style="padding:.3rem .4rem">${esc(row[c] || '—')}</td>`).join('')}
+        </tr>`
+      ).join('');
+
+      document.getElementById('csvStats').textContent = `Ready to import: ${csvParsedRows.length} item${csvParsedRows.length !== 1 ? 's' : ''}`;
+      document.getElementById('csvStats').style.display = 'block';
+      document.getElementById('csvPreview').style.display = 'block';
+    } catch (err) {
+      document.getElementById('csvError').textContent = err.message;
+      document.getElementById('csvError').style.display = 'block';
+      document.getElementById('csvImportBtn').disabled = true;
+      document.getElementById('csvPreview').style.display = 'none';
+      document.getElementById('csvStats').style.display = 'none';
+    }
+  };
+  reader.readAsText(file);
+});
+
+async function importCSVData() {
+  if (!csvParsedRows || csvParsedRows.length === 0) {
+    alert('No CSV data to import.');
+    return;
+  }
+
+  const btn = document.getElementById('csvImportBtn');
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+
+  const successCount = { added: 0, updated: 0, failed: 0 };
+  const errors = [];
+
+  for (const row of csvParsedRows) {
+    try {
+      const code = (row['Item Code'] || '').trim();
+      if (!code) {
+        errors.push('Row skipped: missing Item Code');
+        successCount.failed++;
+        continue;
+      }
+
+      const name = (row['Name'] || '').trim();
+      if (!name) {
+        errors.push(`${code}: missing Name`);
+        successCount.failed++;
+        continue;
+      }
+
+      const existing = items.find(i => i.code === code);
+      const item = calcItem({
+        id:            existing?.id || crypto.randomUUID(),
+        code,
+        name,
+        size:          (row['Size'] || '').trim(),
+        category:      (row['Rack Status'] || '').trim() || null,
+        owner:         (row['Supplier/Owner'] || '').trim(),
+        dateAdded:     (row['Date Added'] || '').trim(),
+        status:        (row['Status'] || 'Available').trim(),
+        salePrice:     parseFloat(row['Sale Price']) || 0,
+        commissionPct: parseFloat(row['Commission %']) || 0,
+      });
+
+      await db.upsert(toRow(item));
+
+      if (existing) {
+        items[items.findIndex(i => i.id === item.id)] = item;
+        successCount.updated++;
+      } else {
+        items.push(item);
+        successCount.added++;
+      }
+    } catch (err) {
+      errors.push(`Error: ${err.message}`);
+      successCount.failed++;
+    }
+  }
+
+  btn.disabled = false;
+  btn.textContent = 'Import';
+
+  const msg = `Import complete!\nAdded: ${successCount.added}\nUpdated: ${successCount.updated}\nFailed: ${successCount.failed}`;
+  alert(msg + (errors.length > 0 ? '\n\nErrors:\n' + errors.slice(0, 3).join('\n') + (errors.length > 3 ? `\n... and ${errors.length - 3} more` : '') : ''));
+
+  closeImportCSVModal();
+  render();
 }
 
 // ── HELPERS ───────────────────────────────────────────────────────────────────
