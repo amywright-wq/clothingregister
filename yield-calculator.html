@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crop Yield Estimate Calculator</title>
+<style>
+:root {
+  --green: #3F6B3F;
+  --green-dk: #2C4C2C;
+  --green-lt: #EAF1E7;
+  --wheat: #C9A24B;
+  --ink: #2A2E27;
+  --ink-soft: #5B6157;
+  --paper: #FBFAF6;
+  --card: #FFFFFF;
+  --line: #DCE3D6;
+  --warn: #A8631E;
+  --error: #B03A2E;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--paper); color: var(--ink); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; }
+
+header { background: var(--green-dk); color: #fff; padding: 2.4rem 1.5rem 2rem; text-align: center; }
+header h1 { font-size: clamp(1.6rem, 4vw, 2.2rem); font-weight: 700; letter-spacing: -0.01em; }
+header .sub { margin-top: .5rem; font-size: .92rem; color: #D9E3D3; max-width: 620px; margin-left: auto; margin-right: auto; }
+
+main { max-width: 720px; margin: 0 auto; padding: 1.8rem 1.2rem 4rem; }
+
+.intro { background: var(--green-lt); border: 1px solid var(--line); border-radius: 10px; padding: 1.3rem 1.5rem; margin-bottom: 1.6rem; font-size: .92rem; }
+.intro p { margin-bottom: .7rem; }
+.intro ol { margin: 0 0 .8rem 1.3rem; }
+.intro ol li { margin-bottom: .35rem; }
+.intro .note { font-size: .82rem; color: var(--ink-soft); border-top: 1px solid var(--line); padding-top: .7rem; }
+.intro a { color: var(--green-dk); }
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 1.4rem 1.5rem; margin-bottom: 1.2rem; box-shadow: 0 2px 8px rgba(44,76,44,.05); }
+.card h2 { font-size: 1.05rem; font-weight: 700; margin-bottom: .5rem; color: var(--green-dk); }
+.hint { font-size: .84rem; color: var(--ink-soft); margin-bottom: .9rem; }
+
+.field { display: flex; flex-direction: column; margin-bottom: .8rem; max-width: 260px; }
+.field label { font-size: .74rem; text-transform: uppercase; letter-spacing: .05em; color: var(--ink-soft); margin-bottom: .3rem; }
+.field input, select { border: 1px solid #ccd3c6; border-radius: 6px; padding: .5rem .7rem; font-size: .92rem; color: var(--ink); background: var(--paper); outline: none; font-family: inherit; }
+.field input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(63,107,63,.15); }
+
+.row-list { display: flex; flex-direction: column; gap: .5rem; margin-bottom: .8rem; }
+.entry-row { display: flex; align-items: center; gap: .6rem; }
+.entry-row .idx { font-size: .8rem; color: var(--ink-soft); width: 4.5rem; flex-shrink: 0; }
+.entry-row input { flex: 1; border: 1px solid #ccd3c6; border-radius: 6px; padding: .5rem .7rem; font-size: .92rem; background: var(--paper); outline: none; }
+.entry-row input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(63,107,63,.15); }
+.entry-row .remove { background: none; border: none; color: var(--ink-soft); cursor: pointer; font-size: 1.1rem; line-height: 1; padding: .3rem; flex-shrink: 0; }
+.entry-row .remove:hover { color: var(--error); }
+
+button.add-btn { background: none; border: 1px dashed var(--green); color: var(--green-dk); border-radius: 6px; padding: .45rem 1rem; font-size: .84rem; cursor: pointer; font-weight: 600; }
+button.add-btn:hover { background: var(--green-lt); }
+
+.result-line { font-size: .88rem; margin-top: .5rem; color: var(--ink); }
+.result-line span { font-weight: 700; color: var(--green-dk); }
+.warn-txt { color: var(--warn); font-weight: 500; font-size: .8rem; margin-left: .3rem; }
+
+.loss-buttons { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: .9rem; }
+.loss-buttons button { border: 1px solid var(--green); background: #fff; color: var(--green-dk); padding: .42rem 1rem; border-radius: 20px; font-size: .82rem; cursor: pointer; font-weight: 600; }
+.loss-buttons button.active { background: var(--green); color: #fff; }
+
+.result-card { background: var(--green-dk); color: #fff; text-align: center; }
+.result-card h2 { color: #fff; }
+.formula { font-size: .82rem; color: #C9DBC0; margin-bottom: 1rem; word-break: break-word; }
+.big-result { display: flex; justify-content: center; gap: 2.2rem; flex-wrap: wrap; margin-bottom: .6rem; }
+.big-result > div { font-size: 2rem; font-weight: 700; }
+.big-result small { display: block; font-size: .68rem; font-weight: 400; text-transform: uppercase; letter-spacing: .06em; color: #C9DBC0; margin-top: .2rem; }
+.sub-result { font-size: .95rem; color: #D9E3D3; }
+
+.footer-actions { display: flex; justify-content: center; margin-top: 1.6rem; }
+#resetAll { background: none; border: 1px solid #ccd3c6; color: var(--ink-soft); padding: .55rem 1.4rem; border-radius: 6px; cursor: pointer; font-size: .84rem; }
+#resetAll:hover { border-color: var(--error); color: var(--error); }
+
+.table-note { font-size: .78rem; color: var(--ink-soft); margin-top: .6rem; }
+.table-note table { border-collapse: collapse; margin-top: .4rem; width: 100%; }
+.table-note td, .table-note th { text-align: left; padding: .3rem .5rem; border-bottom: 1px solid var(--line); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Crop Yield Estimate Calculator</h1>
+  <div class="sub">Paddock sampling method for early grain yield estimation, based on the Agriculture Victoria guide</div>
+</header>
+
+<main>
+  <section class="intro">
+    <p>Walk to several representative spots in the paddock (avoiding edges, tramlines and obviously poor or thick patches) and follow these three steps:</p>
+    <ol>
+      <li>At each site, count the number of heads (cereals) or pods (canola/pulses) within a measured 1&nbsp;m² area. Average these counts across your sites &mdash; this is <strong>A</strong>.</li>
+      <li>Thresh out and count the grains or seeds from at least 20 heads/pods, and average &mdash; this is <strong>B</strong>.</li>
+      <li>Look up (or weigh) the weight of 100 grains/seeds for the crop, in grams &mdash; this is <strong>C</strong>.</li>
+    </ol>
+    <p><strong>Yield (t/ha) = (A &times; B &times; C) &divide; 10,000</strong></p>
+    <p class="note">Grain losses before and during harvest can be significant &mdash; the guide recommends allowing for a 5&ndash;10% loss in your final estimate. This calculator implements that method. Source: <a href="https://agriculture.vic.gov.au/crops-and-horticulture/grains-pulses-and-cereals/crop-production/general-agronomy/a-brief-guide-to-estimating-crop-yields" target="_blank" rel="noopener">Agriculture Victoria &ndash; A brief guide to estimating crop yields</a>.</p>
+  </section>
+
+  <section class="card">
+    <h2>Crop</h2>
+    <div class="field">
+      <label for="cropSelect">Crop type</label>
+      <select id="cropSelect">
+        <option value="wheat" data-c="3.4">Wheat</option>
+        <option value="barley" data-c="4.2">Barley</option>
+        <option value="oats" data-c="4">Oats</option>
+        <option value="triticale" data-c="4">Triticale</option>
+        <option value="canola" data-c="0.4">Canola</option>
+        <option value="custom" data-c="">Custom / other (enter weight below)</option>
+      </select>
+    </div>
+    <div class="table-note">
+      Default weight of 100 grains/seeds (g), from Table 1 of the guide &mdash; edit in Step 3 below if you've weighed your own sample:
+      <table>
+        <tr><th>Crop</th><th>Weight of 100 grains (g)</th></tr>
+        <tr><td>Wheat</td><td>3.4</td></tr>
+        <tr><td>Barley</td><td>4.2</td></tr>
+        <tr><td>Oats / Triticale</td><td>4.0</td></tr>
+        <tr><td>Canola</td><td>0.4</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Step 1 &mdash; Heads / pods per m&sup2; (A)</h2>
+    <p class="hint">Enter the head/pod count from each 1&nbsp;m&sup2; site. The guide recommends at least 5 sites.</p>
+    <div class="row-list" id="siteRows"></div>
+    <button type="button" class="add-btn" id="addSite">+ Add site</button>
+    <div class="result-line">Average heads/pods per m&sup2; (A): <span id="aValue">&ndash;</span> <span class="warn-txt" id="siteWarning"></span></div>
+  </section>
+
+  <section class="card">
+    <h2>Step 2 &mdash; Grains / seeds per head or pod (B)</h2>
+    <p class="hint">Enter the grain/seed count from each sampled head or pod. The guide recommends at least 20 samples.</p>
+    <div class="row-list" id="grainRows"></div>
+    <button type="button" class="add-btn" id="addGrain">+ Add sample</button>
+    <div class="result-line">Sampled <span id="grainCount">0</span> heads/pods <span class="warn-txt" id="grainWarning"></span></div>
+    <div class="result-line">Average grains/seeds per head/pod (B): <span id="bValue">&ndash;</span></div>
+  </section>
+
+  <section class="card">
+    <h2>Step 3 &mdash; Weight of 100 grains/seeds (C)</h2>
+    <div class="field">
+      <label for="cValue">Grams per 100 grains/seeds</label>
+      <input type="number" id="cValue" step="0.01" min="0" value="3.4">
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Harvest loss allowance</h2>
+    <p class="hint">Field losses before and during harvest are typically 5&ndash;10% and are deducted from the raw estimate below.</p>
+    <div class="loss-buttons" id="lossButtons">
+      <button type="button" data-loss="0">0%</button>
+      <button type="button" data-loss="5">5%</button>
+      <button type="button" data-loss="7.5" class="active">7.5%</button>
+      <button type="button" data-loss="10">10%</button>
+    </div>
+    <div class="field">
+      <label for="lossValue">Custom loss allowance (%)</label>
+      <input type="number" id="lossValue" step="0.5" min="0" max="50" value="7.5">
+    </div>
+  </section>
+
+  <section class="card result-card">
+    <h2>Estimated yield</h2>
+    <div class="formula" id="formulaLine">Fill in A, B and C above to see the calculation.</div>
+    <div class="big-result">
+      <div><span id="rawYield">&ndash;</span><small>t/ha, raw estimate</small></div>
+      <div><span id="adjYield">&ndash;</span><small>t/ha, after loss allowance</small></div>
+    </div>
+    <div class="sub-result"><span id="adjYieldKg">&ndash;</span> kg/ha</div>
+  </section>
+
+  <div class="footer-actions">
+    <button type="button" id="resetAll">Reset calculator</button>
+  </div>
+</main>
+
+<script>
+const cropDefaults = { wheat: 3.4, barley: 4.2, oats: 4, triticale: 4, canola: 0.4, custom: null };
+
+const siteRows = document.getElementById('siteRows');
+const grainRows = document.getElementById('grainRows');
+const cropSelect = document.getElementById('cropSelect');
+const cValueInput = document.getElementById('cValue');
+const lossValueInput = document.getElementById('lossValue');
+const lossButtons = document.getElementById('lossButtons');
+
+function makeRow(container, placeholder) {
+  const row = document.createElement('div');
+  row.className = 'entry-row';
+  const idx = document.createElement('span');
+  idx.className = 'idx';
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '0';
+  input.step = 'any';
+  input.placeholder = placeholder;
+  input.addEventListener('input', calculate);
+  const remove = document.createElement('button');
+  remove.type = 'button';
+  remove.className = 'remove';
+  remove.innerHTML = '&times;';
+  remove.title = 'Remove';
+  remove.addEventListener('click', () => { row.remove(); renumber(container); calculate(); });
+  row.appendChild(idx);
+  row.appendChild(input);
+  row.appendChild(remove);
+  container.appendChild(row);
+  renumber(container);
+}
+
+function renumber(container) {
+  const label = container === siteRows ? 'Site' : 'Sample';
+  [...container.children].forEach((row, i) => {
+    row.querySelector('.idx').textContent = label + ' ' + (i + 1);
+  });
+}
+
+document.getElementById('addSite').addEventListener('click', () => makeRow(siteRows, 'heads/pods in 1 m²'));
+document.getElementById('addGrain').addEventListener('click', () => makeRow(grainRows, 'grains/seeds in this head/pod'));
+
+for (let i = 0; i < 5; i++) makeRow(siteRows, 'heads/pods in 1 m²');
+for (let i = 0; i < 5; i++) makeRow(grainRows, 'grains/seeds in this head/pod');
+
+cropSelect.addEventListener('change', () => {
+  const opt = cropSelect.selectedOptions[0];
+  const val = cropDefaults[opt.value];
+  if (val !== null && val !== undefined) {
+    cValueInput.value = val;
+  }
+  calculate();
+});
+
+cValueInput.addEventListener('input', calculate);
+
+lossButtons.addEventListener('click', (e) => {
+  if (e.target.tagName !== 'BUTTON') return;
+  lossValueInput.value = e.target.dataset.loss;
+  [...lossButtons.children].forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  calculate();
+});
+lossValueInput.addEventListener('input', () => {
+  [...lossButtons.children].forEach(b => b.classList.toggle('active', b.dataset.loss === lossValueInput.value));
+  calculate();
+});
+
+function collectValues(container) {
+  return [...container.querySelectorAll('input')]
+    .map(i => parseFloat(i.value))
+    .filter(v => !isNaN(v) && v >= 0);
+}
+
+function average(arr) {
+  if (!arr.length) return null;
+  return arr.reduce((a, b) => a + b, 0) / arr.length;
+}
+
+function fmt(n, dp) {
+  return n.toLocaleString(undefined, { minimumFractionDigits: dp, maximumFractionDigits: dp });
+}
+
+function calculate() {
+  const siteVals = collectValues(siteRows);
+  const grainVals = collectValues(grainRows);
+  const A = average(siteVals);
+  const B = average(grainVals);
+  const C = parseFloat(cValueInput.value);
+  const loss = parseFloat(lossValueInput.value) || 0;
+
+  document.getElementById('aValue').textContent = A !== null ? fmt(A, 1) : '–';
+  document.getElementById('bValue').textContent = B !== null ? fmt(B, 1) : '–';
+  document.getElementById('grainCount').textContent = grainVals.length;
+
+  document.getElementById('siteWarning').textContent =
+    siteVals.length > 0 && siteVals.length < 5 ? '(guide recommends at least 5 sites)' : '';
+  document.getElementById('grainWarning').textContent =
+    grainVals.length > 0 && grainVals.length < 20 ? '(guide recommends at least 20 samples)' : '';
+
+  const formulaEl = document.getElementById('formulaLine');
+  const rawEl = document.getElementById('rawYield');
+  const adjEl = document.getElementById('adjYield');
+  const kgEl = document.getElementById('adjYieldKg');
+
+  if (A !== null && B !== null && !isNaN(C) && C >= 0) {
+    const raw = (A * B * C) / 10000;
+    const adj = raw * (1 - loss / 100);
+    formulaEl.textContent =
+      `(A × B × C) ÷ 10,000 = (${fmt(A,1)} × ${fmt(B,1)} × ${fmt(C,2)}) ÷ 10,000`;
+    rawEl.textContent = fmt(raw, 2);
+    adjEl.textContent = fmt(adj, 2);
+    kgEl.textContent = fmt(adj * 1000, 0) + ' kg/ha (after loss allowance)';
+  } else {
+    formulaEl.textContent = 'Fill in A, B and C above to see the calculation.';
+    rawEl.textContent = '–';
+    adjEl.textContent = '–';
+    kgEl.textContent = '–';
+  }
+}
+
+document.getElementById('resetAll').addEventListener('click', () => {
+  siteRows.innerHTML = '';
+  grainRows.innerHTML = '';
+  for (let i = 0; i < 5; i++) makeRow(siteRows, 'heads/pods in 1 m²');
+  for (let i = 0; i < 5; i++) makeRow(grainRows, 'grains/seeds in this head/pod');
+  cropSelect.value = 'wheat';
+  cValueInput.value = 3.4;
+  lossValueInput.value = 7.5;
+  [...lossButtons.children].forEach(b => b.classList.toggle('active', b.dataset.loss === '7.5'));
+  calculate();
+});
+
+calculate();
+</script>
+</body>
+</html>
