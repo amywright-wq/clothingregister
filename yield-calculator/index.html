@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<title>Paddock Yield Estimator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Estimate wheat, barley and lentil yield from paddock counts. Works offline.">
+<meta name="theme-color" content="#3d5345">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Yield">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Figtree:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #f1efe8;
+    --surface: #faf9f4;
+    --line: #dcd8cb;
+    --ink: #1d231f;
+    --muted: #6b7068;
+    --accent: #3d5345;
+    --accent-ink: #f4f2ea;
+    --accent-soft: rgba(244, 242, 234, 0.16);
+    --warn: #a86b1c;
+    --bad: #a3412f;
+    --good: #3f7a52;
+    --shadow: 0 1px 2px rgba(40, 45, 35, 0.06), 0 8px 24px rgba(40, 45, 35, 0.05);
+    --serif: "Fraunces", Georgia, "Times New Roman", serif;
+    --sans: "Figtree", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --ground: #151a17;
+      --surface: #1e2420;
+      --line: #343c36;
+      --ink: #e9ebe4;
+      --muted: #9da399;
+      --accent: #4f6b58;
+      --accent-ink: #f1f3ec;
+      --accent-soft: rgba(241, 243, 236, 0.14);
+      --warn: #d9a45a;
+      --bad: #e0826d;
+      --good: #7cc28f;
+      --shadow: none;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --ground: #151a17;
+    --surface: #1e2420;
+    --line: #343c36;
+    --ink: #e9ebe4;
+    --muted: #9da399;
+    --accent: #4f6b58;
+    --accent-ink: #f1f3ec;
+    --accent-soft: rgba(241, 243, 236, 0.14);
+    --warn: #d9a45a;
+    --bad: #e0826d;
+    --good: #7cc28f;
+    --shadow: none;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { background: var(--ground); }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font: 16px/1.5 var(--sans);
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding-inline: 18px;
+    padding-block: 20px 140px;
+    display: grid;
+    gap: 22px;
+  }
+  h1, h2 { font-family: var(--serif); font-weight: 600; margin: 0; text-wrap: balance; }
+  h1 { font-size: clamp(30px, 8vw, 40px); line-height: 1.08; letter-spacing: -0.01em; }
+  h2 { font-family: var(--sans); font-size: 19px; font-weight: 600; }
+  p { margin: 0; }
+  .eyebrow { font-size: 13px; color: var(--muted); letter-spacing: 0.02em; }
+  .lede { color: var(--muted); font-size: 16px; }
+  .hint { color: var(--muted); font-size: 14px; margin-top: 8px; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 22px;
+    padding: 20px 18px;
+    display: grid;
+    gap: 14px;
+    box-shadow: var(--shadow);
+  }
+  .field { display: grid; gap: 6px; }
+  .field + .field { margin-top: 6px; }
+  .label-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+  label, .label { font-weight: 500; font-size: 16px; }
+  .unit { color: var(--muted); font-size: 14px; }
+  input[type="text"], input[type="number"] {
+    width: 100%;
+    font: inherit;
+    font-size: 17px;
+    color: var(--ink);
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 12px 14px;
+    min-height: 50px;
+  }
+  input::placeholder { color: var(--muted); opacity: 0.8; }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .stepper { display: grid; grid-template-columns: 52px 1fr 52px; gap: 10px; }
+  .stepper input { text-align: center; font-variant-numeric: tabular-nums; -moz-appearance: textfield; }
+  .stepper input::-webkit-outer-spin-button, .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  button { font: inherit; cursor: pointer; color: inherit; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 48px; padding: 10px 18px; border-radius: 14px;
+    border: 1px solid var(--line); background: var(--surface); font-weight: 500;
+  }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .btn.ghost { border-color: transparent; background: transparent; padding-inline: 6px; color: var(--muted); }
+  .btn.sq { padding: 0; font-size: 22px; font-weight: 400; }
+  .btn svg { width: 20px; height: 20px; flex: none; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+
+  .crops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .crop {
+    border: 1px solid var(--line); background: var(--surface); border-radius: 20px;
+    min-height: 104px; padding: 14px; text-align: left;
+    display: flex; flex-direction: column; justify-content: space-between; font-weight: 600;
+  }
+  .crop svg { width: 26px; height: 26px; }
+  .crop[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  .seg { display: inline-flex; background: var(--ground); border-radius: 16px; padding: 4px; gap: 4px; justify-self: start; }
+  .seg button { border: 0; background: transparent; border-radius: 12px; padding: 9px 14px; color: var(--muted); display: inline-flex; gap: 8px; align-items: center; }
+  .seg button[aria-pressed="true"] { background: var(--surface); color: var(--ink); box-shadow: var(--shadow); }
+  .seg svg { width: 18px; height: 18px; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 6px 0; width: 100%; }
+
+  /* Result */
+  .result { background: var(--accent); color: var(--accent-ink); border-radius: 26px; padding: 24px 22px; display: grid; gap: 14px; }
+  .result .eyebrow { color: var(--accent-ink); opacity: 0.75; text-transform: uppercase; letter-spacing: 0.14em; font-weight: 600; font-size: 13px; }
+  .big { display: flex; align-items: baseline; gap: 10px; }
+  .big strong { font-family: var(--serif); font-size: clamp(56px, 18vw, 76px); line-height: 1; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .sub { opacity: 0.82; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; background: var(--accent-soft); border-radius: 999px; padding: 5px 12px; font-size: 14px; }
+  .bars { display: grid; gap: 14px; margin-top: 4px; }
+  .bar-head { display: flex; justify-content: space-between; gap: 10px; font-size: 15px; }
+  .bar-head span:last-child { opacity: 0.8; font-variant-numeric: tabular-nums; }
+  .track { height: 8px; border-radius: 99px; background: var(--accent-soft); margin-top: 6px; overflow: hidden; position: relative; }
+  .fill { height: 100%; border-radius: 99px; background: var(--accent-ink); transition: width 0.25s ease; }
+  .track::after { content: ""; position: absolute; top: 0; bottom: 0; left: calc(100% / 1.4); width: 2px; background: var(--accent); opacity: 0.8; }
+  .note { font-size: 14px; opacity: 0.68; }
+  .totals { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .totals div { background: var(--accent-soft); border-radius: 14px; padding: 10px 12px; }
+  .totals b { display: block; font-family: var(--serif); font-size: 24px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  details.card summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 10px; font-weight: 500; }
+  details.card summary::-webkit-details-marker { display: none; }
+  details.card summary .more { margin-left: auto; color: var(--muted); font-weight: 400; }
+  details[open] summary .more::before { content: "Hide"; }
+  details:not([open]) summary .more::before { content: "Show"; }
+  details ol { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: var(--ink); }
+
+  .list { display: grid; gap: 8px; }
+  .item { display: flex; align-items: center; gap: 10px; border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; }
+  .item .grow { flex: 1; min-width: 0; }
+  .item .t { font-weight: 600; overflow-wrap: anywhere; }
+  .item .s { color: var(--muted); font-size: 14px; font-variant-numeric: tabular-nums; }
+  .item .v { font-family: var(--serif); font-weight: 600; font-size: 20px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .x { border: 0; background: transparent; color: var(--muted); width: 36px; height: 36px; border-radius: 10px; font-size: 20px; flex: none; }
+  .avg { display: flex; justify-content: space-between; font-weight: 600; padding-top: 4px; font-variant-numeric: tabular-nums; }
+  .empty { color: var(--muted); font-size: 14px; }
+
+  .photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+  .photo { position: relative; aspect-ratio: 1; max-width: 100%; border-radius: 12px; overflow: hidden; background: var(--ground); }
+  .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .photo button { position: absolute; top: 4px; right: 4px; width: 28px; height: 28px; border-radius: 99px; border: 0; background: rgba(0,0,0,0.55); color: #fff; font-size: 16px; line-height: 1; }
+  .file-btn { position: relative; overflow: hidden; }
+  .file-btn input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  .dock {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 5;
+    background: var(--surface); border-top: 1px solid var(--line);
+    padding: 12px 18px calc(12px + env(safe-area-inset-bottom, 0px));
+  }
+  .dock-in { max-width: 560px; margin: 0 auto; display: flex; align-items: center; gap: 14px; }
+  .dock .grow { flex: 1; min-width: 0; }
+  .dock strong { font-family: var(--serif); font-size: 32px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .dock .s { color: var(--muted); font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .toast { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--ground); padding: 10px 16px; border-radius: 12px; font-size: 15px; z-index: 10; max-width: calc(100% - 32px); }
+  .confirm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+
+  .report { display: none; }
+  @media (prefers-reduced-motion: reduce) { .fill { transition: none; } }
+  @media print {
+    body { background: #fff; color: #000; }
+    .wrap, .dock, .toast { display: none !important; }
+    .report { display: block; padding: 24px; font: 12pt/1.45 var(--sans); }
+    .report h1 { font-size: 22pt; margin-bottom: 4px; }
+    .report table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+    .report th, .report td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #bbb; }
+    .report td.n, .report th.n { text-align: right; }
+  }
+</style>
+</head>
+<body>
+
+<main class="wrap">
+  <header style="display:grid;gap:12px">
+    <p class="eyebrow">Paddock Yield Estimator</p>
+    <h1>Grain yield from a paddock count</h1>
+    <p class="lede">Wheat, barley and lentils in t/ha, with tonnes from each paddock and a farm total. Name the paddock, set the hectares, count the stand, and save the estimate.</p>
+    <div class="row" id="printRow">
+      <button class="btn" id="printBtn" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 9V3h12v6M6 18H4a1 1 0 0 1-1-1v-6a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v6a1 1 0 0 1-1 1h-2"/><path d="M6 14h12v7H6z"/></svg>
+        Print / Save PDF
+      </button>
+    </div>
+  </header>
+
+  <section style="display:grid;gap:14px">
+    <div class="field">
+      <label for="company">Company name</label>
+      <input type="text" id="company" placeholder="e.g. Riverbend Ag" autocomplete="organization">
+    </div>
+    <div class="field">
+      <label for="farm">Farm name</label>
+      <input type="text" id="farm" placeholder="e.g. Wattle Creek">
+      <p class="hint">Shown at the top of the print report. Stays on this device.</p>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:14px">
+    <div class="field">
+      <div class="label-row">
+        <label for="paddock">Paddock name</label>
+        <button class="btn ghost" id="newPaddock" type="button" style="min-height:auto">+ New paddock</button>
+      </div>
+      <input type="text" id="paddock" placeholder="North 40, river block…">
+      <p class="hint">Shown on the saved list for this device.</p>
+    </div>
+    <div class="field">
+      <div class="label-row"><label for="area">Paddock area</label><span class="unit">ha</span></div>
+      <div class="stepper" data-step="1" data-dp="1" data-min="0">
+        <button class="btn sq" type="button" data-d="-1" aria-label="Decrease area">−</button>
+        <input type="number" id="area" inputmode="decimal" step="any" min="0">
+        <button class="btn sq" type="button" data-d="1" aria-label="Increase area">+</button>
+      </div>
+      <p class="hint">Yield × area gives tonnes that could come off this paddock.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Crop photos</h2>
+    <p class="lede" style="font-size:15px">Snap the stand in this paddock when you count. Stays on this device.</p>
+    <div class="row">
+      <span class="btn primary file-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        Take photo
+        <input type="file" id="camera" accept="image/*" capture="environment" aria-label="Take photo">
+      </span>
+      <span class="btn file-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 5 5 3-3 5 5"/><circle cx="15.5" cy="8.5" r="1.5"/></svg>
+        From library
+        <input type="file" id="library" accept="image/*" multiple aria-label="Choose photos from library">
+      </span>
+    </div>
+    <div class="photos" id="photos"></div>
+  </section>
+
+  <section style="display:grid;gap:10px">
+    <span class="label">Crop</span>
+    <div class="crops" id="crops" role="group" aria-label="Crop"></div>
+  </section>
+
+  <section class="card">
+    <h2>Paddock counts</h2>
+    <p class="lede" style="font-size:15px">Add each spot as a test — the paddock uses the average.</p>
+    <button class="btn ghost" id="typical" type="button" style="justify-self:start">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.6"/><path d="M4 3.5v5h5"/></svg>
+      Typical stand
+    </button>
+    <div class="seg" role="group" aria-label="Counting method">
+      <button type="button" id="modeQuad" aria-pressed="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>Quadrat
+      </button>
+      <button type="button" id="modeRow" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m3 15 12-12 6 6-12 12z"/><path d="m7 11 2 2M10 8l2 2M13 5l2 2"/></svg>Row width
+      </button>
+    </div>
+
+    <div id="quadFields" class="field">
+      <div class="label-row"><label for="heads" id="headsLabel">Heads per square metre</label><span class="unit">/m²</span></div>
+      <div class="stepper" data-step="10" data-dp="0" data-min="0">
+        <button class="btn sq" type="button" data-d="-1" aria-label="Decrease">−</button>
+        <input type="number" id="heads" inputmode="decimal" step="any" min="0">
+        <button class="btn sq" type="button" data-d="1" aria-label="Increase">+</button>
+      </div>
+      <p class="hint" id="headsHint"></p>
+    </div>
+
+    <div id="rowFields" hidden style="display:grid;gap:14px">
+      <div class="field">
+        <div class="label-row"><label for="perMetre" id="perMetreLabel">Heads per metre of row</label><span class="unit">/m</span></div>
+        <div class="stepper" data-step="1" data-dp="0" data-min="0">
+          <button class="btn sq" type="button" data-d="-1" aria-label="Decrease">−</button>
+          <input type="number" id="perMetre" inputmode="decimal" step="any" min="0">
+          <button class="btn sq" type="button" data-d="1" aria-label="Increase">+</button>
+        </div>
+      </div>
+      <div class="field">
+        <div class="label-row"><label for="spacing">Row spacing</label><span class="unit">cm</span></div>
+        <div class="stepper" data-step="1" data-dp="1" data-min="1">
+          <button class="btn sq" type="button" data-d="-1" aria-label="Decrease">−</button>
+          <input type="number" id="spacing" inputmode="decimal" step="any" min="1">
+          <button class="btn sq" type="button" data-d="1" aria-label="Increase">+</button>
+        </div>
+        <p class="hint" id="rowHint"></p>
+      </div>
+    </div>
+
+    <div class="field">
+      <div class="label-row"><label for="grains" id="grainsLabel">Grains per head</label></div>
+      <div class="stepper" data-step="1" data-dp="1" data-min="0">
+        <button class="btn sq" type="button" data-d="-1" aria-label="Decrease">−</button>
+        <input type="number" id="grains" inputmode="decimal" step="any" min="0">
+        <button class="btn sq" type="button" data-d="1" aria-label="Increase">+</button>
+      </div>
+      <p class="hint" id="grainsHint"></p>
+    </div>
+
+    <div class="field">
+      <div class="label-row"><label for="tgw" id="tgwLabel">Thousand grain weight</label><span class="unit">g</span></div>
+      <div class="stepper" data-step="1" data-dp="1" data-min="0">
+        <button class="btn sq" type="button" data-d="-1" aria-label="Decrease">−</button>
+        <input type="number" id="tgw" inputmode="decimal" step="any" min="0">
+        <button class="btn sq" type="button" data-d="1" aria-label="Increase">+</button>
+      </div>
+      <p class="hint" id="tgwHint"></p>
+    </div>
+
+    <hr>
+
+    <div class="field">
+      <div class="label-row"><label for="loss">Harvest loss allowance</label><span class="unit">%</span></div>
+      <div class="stepper" data-step="1" data-dp="1" data-min="0" data-max="90">
+        <button class="btn sq" type="button" data-d="-1" aria-label="Decrease">−</button>
+        <input type="number" id="loss" inputmode="decimal" step="any" min="0" max="90">
+        <button class="btn sq" type="button" data-d="1" aria-label="Increase">+</button>
+      </div>
+      <p class="hint">Shattering, header loss and unharvested edges. Leave at 0 for a standing yield.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Tests this paddock</h2>
+    <p class="lede" style="font-size:15px">Save each count as a test. The paddock yield is the average.</p>
+    <div class="list" id="tests"></div>
+    <button class="btn primary" id="addTest" type="button" style="justify-self:start">+ Add this count</button>
+  </section>
+
+  <details class="card" id="howto">
+    <summary>
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg>
+      <span id="howtoTitle">How to count wheat</span><span class="more"></span>
+    </summary>
+    <ol id="howtoList"></ol>
+  </details>
+
+  <section class="result" aria-live="polite">
+    <p class="eyebrow" id="resultEyebrow">Estimated yield</p>
+    <div class="big"><strong id="rYield">–</strong><span>t/ha</span></div>
+    <p class="sub" id="rBags"></p>
+    <div class="row"><span class="pill" id="rRange"></span><span class="pill" id="rStatus"></span></div>
+    <div class="totals" id="rTotals" hidden>
+      <div><span class="note" style="opacity:.8">This paddock</span><b id="rTonnes"></b></div>
+      <div><span class="note" style="opacity:.8">Farm total (saved)</span><b id="rFarm"></b></div>
+    </div>
+    <div class="bars" id="bars"></div>
+    <p id="rBalance"></p>
+    <p class="note" id="rFormula"></p>
+  </section>
+
+  <section class="card">
+    <div class="label-row"><h2>Saved paddocks</h2><span class="unit" id="farmTotal"></span></div>
+    <div class="list" id="saved"></div>
+  </section>
+
+  <p class="hint" style="text-align:center">Estimates only — hand counts usually read high. Everything stays on this device, and the app works without signal once it has been opened once.</p>
+</main>
+
+<div class="dock">
+  <div class="dock-in">
+    <div class="grow">
+      <div><strong id="dYield">–</strong> <span>t/ha</span></div>
+      <div class="s" id="dBags"></div>
+    </div>
+    <button class="btn primary" id="saveBtn" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h12v18l-6-4-6 4z"/></svg>
+      Save
+    </button>
+  </div>
+</div>
+
+<div class="report" id="report"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  // 1 bushel of wheat/lentils = 60 lb = 27.216 kg; barley = 48 lb = 21.772 kg. Bags are 3 bushels.
+  const HA_PER_AC = 0.404686;
+  const CROPS = {
+    wheat: {
+      name: "Wheat",
+      unit: "heads", unitCap: "Heads", perUnit: "Grains per head", perShort: "/ head",
+      weightLabel: "Thousand grain weight", weightShort: "TGW", seedWord: "grains",
+      typical: { heads: 400, grains: 30, tgw: 36 },
+      range: [2.0, 5.5],
+      bushelKg: 27.216,
+      standWords: ["Stand", "fill", "grain weight"],
+      headsHint: "Count fertile heads, not tillers. A 50 cm × 50 cm quadrat is 0.25 m² — multiply by 4.",
+      grainsHint: "Typical 16–50. Count spikelets × grains on 10 heads.",
+      tgwHint: "Hard wheat is often 32–38 g; soft wheat 35–45 g. Use the bag grain weight if you have it.",
+      howto: [
+        "Walk well into the paddock, away from headlands and gateways. Pick spots that look like the paddock, not the best or worst patch.",
+        "Throw a 50 cm × 50 cm quadrat (0.25 m²) and count every head with grain in it. Multiply by 4 for heads per m². Or count heads along 1 m of row and use Row width.",
+        "Pull 10 heads at random. Count grains per head (spikelets × grains per spikelet) and average them.",
+        "Use 36 g for thousand grain weight unless you have a better figure from last year's deliveries or a weighed sample.",
+        "Add each spot as a test. Five or more spread across the paddock gives a fair average."
+      ]
+    },
+    barley: {
+      name: "Barley",
+      unit: "heads", unitCap: "Heads", perUnit: "Grains per head", perShort: "/ head",
+      weightLabel: "Thousand grain weight", weightShort: "TGW", seedWord: "grains",
+      typical: { heads: 500, grains: 22, tgw: 44 },
+      range: [2.0, 6.0],
+      bushelKg: 21.772,
+      standWords: ["Stand", "fill", "grain weight"],
+      headsHint: "Count fertile heads, not tillers. A 50 cm × 50 cm quadrat is 0.25 m² — multiply by 4.",
+      grainsHint: "Two-row barley is typically 18–28. Count grains on 10 heads and average.",
+      tgwHint: "Malting barley is often 40–50 g. Use the bag grain weight if you have it.",
+      howto: [
+        "Walk well into the paddock, away from headlands and gateways. Pick representative spots.",
+        "Throw a 50 cm × 50 cm quadrat and count every fertile head. Multiply by 4 for heads per m².",
+        "Pull 10 heads at random and count grains down both sides of each. Average them.",
+        "Use 44 g thousand grain weight unless you have a weighed sample.",
+        "Add each spot as a test. Five or more across the paddock gives a fair average."
+      ]
+    },
+    lentils: {
+      name: "Lentils",
+      unit: "pods", unitCap: "Pods", perUnit: "Seeds per pod", perShort: "/ pod",
+      weightLabel: "Thousand seed weight", weightShort: "TSW", seedWord: "seeds",
+      typical: { heads: 1500, grains: 1.7, tgw: 42 },
+      range: [0.8, 2.5],
+      bushelKg: 27.216,
+      standWords: ["Pod set", "seeds per pod", "seed size"],
+      headsHint: "Count filled pods, not flowers or flat pods. A 50 cm × 50 cm quadrat is 0.25 m² — multiply by 4.",
+      grainsHint: "Usually 1–2. Open 20 pods and average the seeds.",
+      tgwHint: "Small red lentils are often 35–45 g; large green 55–70 g.",
+      howto: [
+        "Walk well into the paddock and choose representative spots.",
+        "Cut all plants in a 50 cm × 50 cm quadrat and count the filled pods. Multiply by 4 for pods per m².",
+        "Open 20 pods at random and average the seeds per pod.",
+        "Use the thousand seed weight for your variety (small red ~40 g, large green ~60 g).",
+        "Lentils shed pods easily — set a harvest loss allowance of 5–10% if the crop is ripe."
+      ]
+    }
+  };
+
+  const ICONS = {
+    wheat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 22V8"/><path d="M12 8c-2.5 0-3.5-2-3.5-4 2 0 3.5 1.2 3.5 4zM12 8c2.5 0 3.5-2 3.5-4-2 0-3.5 1.2-3.5 4z"/><path d="M12 13c-2.5 0-3.5-2-3.5-4 2 0 3.5 1.2 3.5 4zM12 13c2.5 0 3.5-2 3.5-4-2 0-3.5 1.2-3.5 4z"/><path d="M12 18c-2.5 0-3.5-2-3.5-4 2 0 3.5 1.2 3.5 4zM12 18c2.5 0 3.5-2 3.5-4-2 0-3.5 1.2-3.5 4z"/></svg>',
+    barley: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 22V3"/><path d="M12 7 7 3M12 7l5-4M12 11 7 7M12 11l5-4M12 15l-5-4M12 15l5-4"/></svg>',
+    lentils: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c5 0 8 4.5 8 9s-3.5 9-8 9-8-4.5-8-9 3-9 8-9z"/><path d="M12 3v18"/><circle cx="8.5" cy="10" r="1.3"/><circle cx="15.5" cy="10" r="1.3"/><circle cx="8.5" cy="15" r="1.3"/><circle cx="15.5" cy="15" r="1.3"/></svg>'
+  };
+
+  // ---------- storage (best effort) ----------
+  const store = {
+    get(k, fallback) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; } catch (e) { return fallback; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  };
+  const K = { settings: "pye.settings", current: "pye.current", paddocks: "pye.paddocks" };
+
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  function blankPaddock(crop) {
+    const c = CROPS[crop || "wheat"];
+    return {
+      id: uid(), name: "", area: 0, crop: crop || "wheat", mode: "quad",
+      heads: c.typical.heads, perMetre: 18, spacing: 22.5,
+      grains: c.typical.grains, tgw: c.typical.tgw, loss: 0,
+      tests: [], photos: []
+    };
+  }
+
+  let settings = store.get(K.settings, { company: "", farm: "" });
+  let paddocks = store.get(K.paddocks, []);
+  let cur = store.get(K.current, null) || blankPaddock("wheat");
+  if (!CROPS[cur.crop]) cur = blankPaddock("wheat");
+
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n, dp) => Number.isFinite(n) ? n.toLocaleString("en-AU", { minimumFractionDigits: dp, maximumFractionDigits: dp }) : "–";
+  const esc = (s) => String(s).replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+
+  // ---------- maths ----------
+  function headsPerM2(p) {
+    if (p.mode === "row") return p.spacing > 0 ? p.perMetre / (p.spacing / 100) : 0;
+    return p.heads;
+  }
+  function calc(p) {
+    const h = headsPerM2(p);
+    const grainsM2 = h * p.grains;
+    const standing = grainsM2 * p.tgw / 100000;           // g/m² ÷ 100 = t/ha
+    const yieldT = standing * (1 - Math.min(Math.max(p.loss, 0), 90) / 100);
+    return { heads: h, grainsM2, standing, yieldT };
+  }
+  const bagKg = (crop) => CROPS[crop].bushelKg * 3;
+  const bagsPerAc = (tha, crop) => tha * 1000 * HA_PER_AC / bagKg(crop);
+  function paddockYield(p) {
+    if (p.tests && p.tests.length) return p.tests.reduce((s, t) => s + t.yieldT, 0) / p.tests.length;
+    return calc(p).yieldT;
+  }
+
+  // ---------- render ----------
+  function renderCrops() {
+    $("crops").innerHTML = Object.keys(CROPS).map((k) =>
+      `<button type="button" class="crop" data-crop="${k}" aria-pressed="${k === cur.crop}">${ICONS[k]}<span>${CROPS[k].name}</span></button>`
+    ).join("");
+  }
+
+  function renderLabels() {
+    const c = CROPS[cur.crop];
+    $("headsLabel").textContent = `${c.unitCap} per square metre`;
+    $("perMetreLabel").textContent = `${c.unitCap} per metre of row`;
+    $("grainsLabel").textContent = c.perUnit;
+    $("tgwLabel").textContent = c.weightLabel;
+    $("headsHint").textContent = c.headsHint;
+    $("grainsHint").textContent = c.grainsHint;
+    $("tgwHint").textContent = c.tgwHint;
+    $("howtoTitle").textContent = `How to count ${c.name.toLowerCase()}`;
+    $("howtoList").innerHTML = c.howto.map((s) => `<li>${esc(s)}</li>`).join("");
+    $("rowHint").textContent = `Count ${c.unit} along 1 m of row. ${c.unitCap}/m² = ${c.unit} per metre ÷ row spacing in metres.`;
+    $("grains").closest(".stepper").dataset.step = cur.crop === "lentils" ? "0.1" : "1";
+    $("heads").closest(".stepper").dataset.step = cur.crop === "lentils" ? "50" : "10";
+  }
+
+  function renderInputs() {
+    $("company").value = settings.company || "";
+    $("farm").value = settings.farm || "";
+    $("paddock").value = cur.name || "";
+    $("area").value = fmt(cur.area, 1).replace(/,/g, "");
+    $("heads").value = +cur.heads.toFixed(1);
+    $("perMetre").value = +cur.perMetre.toFixed(1);
+    $("spacing").value = +cur.spacing.toFixed(1);
+    $("grains").value = +cur.grains.toFixed(2);
+    $("tgw").value = +cur.tgw.toFixed(1);
+    $("loss").value = +cur.loss.toFixed(1);
+    const row = cur.mode === "row";
+    $("modeQuad").setAttribute("aria-pressed", String(!row));
+    $("modeRow").setAttribute("aria-pressed", String(row));
+    $("quadFields").hidden = row;
+    $("rowFields").hidden = !row;
+  }
+
+  function renderResult() {
+    const c = CROPS[cur.crop];
+    const r = calc(cur);
+    const hasTests = cur.tests.length > 0;
+    const shown = hasTests ? paddockYield(cur) : r.yieldT;
+    const bags = bagsPerAc(shown, cur.crop);
+    const bagLabel = `3-bushel bag (${fmt(bagKg(cur.crop), 1)} kg)`;
+
+    $("resultEyebrow").textContent = hasTests ? `Paddock average · ${cur.tests.length} test${cur.tests.length > 1 ? "s" : ""}` : "Estimated yield";
+    $("rYield").textContent = fmt(shown, 2);
+    $("rBags").textContent = `${fmt(bags, 1)} bags/ac · ${bagLabel}`;
+    $("rRange").textContent = `${fmt(c.range[0], 1)}–${fmt(c.range[1], 1)} t/ha typical`;
+    $("rStatus").textContent = shown < c.range[0] ? "Below the typical range" : shown > c.range[1] ? "Above the typical range" : "In a typical range";
+
+    $("dYield").textContent = fmt(shown, 2);
+    $("dBags").textContent = `${fmt(bags, 1)} bags/ac · ${bagLabel}`;
+
+    const farmT = farmTotal();
+    $("rTotals").hidden = !(cur.area > 0) && !(farmT > 0);
+    $("rTonnes").textContent = cur.area > 0 ? `${fmt(shown * cur.area, 1)} t` : "–";
+    $("rFarm").textContent = farmT > 0 ? `${fmt(farmT, 1)} t` : "–";
+
+    const parts = [
+      { label: c.unitCap, pct: r.heads / c.typical.heads * 100, val: `${fmt(r.heads, 0)} /m²`, word: c.standWords[0] },
+      { label: cur.crop === "lentils" ? "Seeds" : "Grains", pct: cur.grains / c.typical.grains * 100, val: `${fmt(cur.grains, 1)} ${c.perShort}`, word: c.standWords[1] },
+      { label: cur.crop === "lentils" ? "Seed weight" : "Grain weight", pct: cur.tgw / c.typical.tgw * 100, val: `${fmt(cur.tgw, 0)} g ${c.weightShort}`, word: c.standWords[2] }
+    ];
+    $("bars").innerHTML = parts.map((p) => `
+      <div>
+        <div class="bar-head"><span>${p.label}</span><span>${fmt(p.pct, 0)}% · ${p.val}</span></div>
+        <div class="track"><div class="fill" style="width:${Math.min(p.pct / 1.4, 100)}%"></div></div>
+      </div>`).join("");
+
+    const low = parts.reduce((a, b) => (b.pct < a.pct ? b : a));
+    const high = parts.reduce((a, b) => (b.pct > a.pct ? b : a));
+    let msg;
+    if (low.pct >= 90 && high.pct <= 110) {
+      msg = `${c.standWords[0]}, ${c.standWords[1]} and ${c.standWords[2]} are in balance.`;
+    } else if (low.pct < 90) {
+      msg = `${cap(low.word)} is holding yield back — ${fmt(low.pct, 0)}% of typical.`;
+    } else {
+      msg = `${cap(high.word)} is lifting yield — ${fmt(high.pct, 0)}% of typical.`;
+    }
+    $("rBalance").textContent = msg;
+
+    let formula = `Yield = ${c.unit}/m² × ${c.seedWord}/${c.unit === "pods" ? "pod" : "head"} × ${c.weightShort} ÷ 100,000. ${fmt(r.grainsM2, 0)} ${c.seedWord}/m².`;
+    if (cur.loss > 0) formula += ` Less ${fmt(cur.loss, 1)}% harvest loss from ${fmt(r.standing, 2)} t/ha standing.`;
+    if (hasTests) formula += ` Current count: ${fmt(r.yieldT, 2)} t/ha.`;
+    $("rFormula").textContent = formula;
+  }
+  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+
+  function renderTests() {
+    const el = $("tests");
+    if (!cur.tests.length) { el.innerHTML = `<p class="empty">No tests yet. Enter a count above, then add it.</p>`; return; }
+    const avg = paddockYield(cur);
+    el.innerHTML = cur.tests.map((t, i) => `
+      <div class="item">
+        <div class="grow"><div class="t">Test ${i + 1}</div>
+          <div class="s">${fmt(t.heads, 0)} /m² · ${fmt(t.grains, 1)} · ${fmt(t.tgw, 0)} g${t.loss ? ` · ${fmt(t.loss, 1)}% loss` : ""}</div></div>
+        <span class="v">${fmt(t.yieldT, 2)}</span>
+        <button class="x" type="button" data-del-test="${i}" aria-label="Remove test ${i + 1}">×</button>
+      </div>`).join("") + `<div class="avg"><span>Average</span><span>${fmt(avg, 2)} t/ha</span></div>`;
+  }
+
+  function renderPhotos() {
+    $("photos").innerHTML = cur.photos.map((src, i) =>
+      `<div class="photo"><img src="${src}" alt="Crop photo ${i + 1}"><button type="button" data-del-photo="${i}" aria-label="Remove photo ${i + 1}">×</button></div>`
+    ).join("");
+  }
+
+  function farmTotal() {
+    return paddocks.reduce((s, p) => s + (p.area > 0 ? paddockYield(p) * p.area : 0), 0);
+  }
+
+  let pendingDelete = null;
+  function renderSaved() {
+    const el = $("saved");
+    const total = farmTotal();
+    $("farmTotal").textContent = total > 0 ? `Farm total ${fmt(total, 1)} t` : "";
+    if (!paddocks.length) { el.innerHTML = `<p class="empty">Nothing saved yet. Tap Save to keep this paddock's estimate.</p>`; return; }
+    el.innerHTML = paddocks.map((p) => {
+      const y = paddockYield(p);
+      const t = p.area > 0 ? ` · ${fmt(y * p.area, 1)} t` : "";
+      const active = p.id === cur.id ? " (open)" : "";
+      const confirm = pendingDelete === p.id
+        ? `<div class="confirm"><span>Delete?</span><button class="btn" type="button" data-del-yes="${p.id}" style="min-height:36px">Delete</button><button class="btn ghost" type="button" data-del-no style="min-height:36px">Keep</button></div>`
+        : `<button class="x" type="button" data-del-paddock="${p.id}" aria-label="Delete ${esc(p.name || "paddock")}">×</button>`;
+      return `<div class="item">
+        <button type="button" class="grow" data-open="${p.id}" style="border:0;background:none;text-align:left;padding:0">
+          <div class="t">${esc(p.name || "Unnamed paddock")}${active}</div>
+          <div class="s">${CROPS[p.crop].name} · ${fmt(p.area, 1)} ha${t}${p.tests.length ? ` · ${p.tests.length} tests` : ""}</div>
+        </button>
+        <span class="v">${fmt(y, 2)}</span>${confirm}
+      </div>`;
+    }).join("");
+  }
+
+  function renderAll() {
+    renderCrops(); renderLabels(); renderInputs(); renderResult(); renderTests(); renderPhotos(); renderSaved();
+  }
+
+  function persist() {
+    store.set(K.current, cur);
+  }
+  function update() { persist(); renderResult(); }
+
+  let toastTimer;
+  function toast(msg) {
+    let t = document.querySelector(".toast");
+    if (!t) { t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); document.body.appendChild(t); }
+    t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2200);
+  }
+
+  // ---------- events ----------
+  const NUMS = ["area", "heads", "perMetre", "spacing", "grains", "tgw", "loss"];
+  NUMS.forEach((id) => {
+    $(id).addEventListener("input", () => {
+      const v = parseFloat($(id).value);
+      cur[id] = Number.isFinite(v) && v >= 0 ? v : 0;
+      if (id === "area") renderSaved();
+      update();
+    });
+  });
+
+  document.querySelectorAll(".stepper").forEach((st) => {
+    st.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-d]");
+      if (!b) return;
+      const input = st.querySelector("input");
+      const step = parseFloat(st.dataset.step);
+      const min = parseFloat(st.dataset.min || "0");
+      const max = st.dataset.max ? parseFloat(st.dataset.max) : Infinity;
+      const cur0 = parseFloat(input.value) || 0;
+      let next = Math.round((cur0 + step * +b.dataset.d) / step) * step;
+      next = Math.min(Math.max(next, min), max);
+      input.value = +next.toFixed(2);
+      input.dispatchEvent(new Event("input"));
+    });
+  });
+
+  $("company").addEventListener("input", (e) => { settings.company = e.target.value; store.set(K.settings, settings); });
+  $("farm").addEventListener("input", (e) => { settings.farm = e.target.value; store.set(K.settings, settings); });
+  $("paddock").addEventListener("input", (e) => { cur.name = e.target.value; persist(); });
+
+  $("crops").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-crop]");
+    if (!b || b.dataset.crop === cur.crop) return;
+    const c = CROPS[b.dataset.crop];
+    cur.crop = b.dataset.crop;
+    cur.heads = c.typical.heads; cur.grains = c.typical.grains; cur.tgw = c.typical.tgw;
+    cur.perMetre = +(c.typical.heads * cur.spacing / 100).toFixed(0);
+    persist(); renderAll();
+  });
+
+  $("typical").addEventListener("click", () => {
+    const c = CROPS[cur.crop];
+    cur.heads = c.typical.heads; cur.grains = c.typical.grains; cur.tgw = c.typical.tgw;
+    cur.perMetre = +(c.typical.heads * cur.spacing / 100).toFixed(0);
+    persist(); renderInputs(); renderResult();
+  });
+
+  function setMode(mode) {
+    if (mode === cur.mode) return;
+    // Carry the current density across so the yield doesn't jump when switching.
+    if (mode === "row") cur.perMetre = +(cur.heads * cur.spacing / 100).toFixed(1);
+    else cur.heads = +headsPerM2(cur).toFixed(0);
+    cur.mode = mode;
+    persist(); renderInputs(); renderResult();
+  }
+  $("modeQuad").addEventListener("click", () => setMode("quad"));
+  $("modeRow").addEventListener("click", () => setMode("row"));
+
+  $("addTest").addEventListener("click", () => {
+    const r = calc(cur);
+    cur.tests.push({ heads: r.heads, grains: cur.grains, tgw: cur.tgw, loss: cur.loss, yieldT: r.yieldT });
+    persist(); renderTests(); renderResult();
+    toast(`Added test ${cur.tests.length}`);
+  });
+  $("tests").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-del-test]");
+    if (!b) return;
+    cur.tests.splice(+b.dataset.delTest, 1);
+    persist(); renderTests(); renderResult();
+  });
+
+  $("saveBtn").addEventListener("click", () => {
+    const copy = JSON.parse(JSON.stringify(cur));
+    copy.savedAt = new Date().toISOString();
+    const i = paddocks.findIndex((p) => p.id === cur.id);
+    if (i >= 0) paddocks[i] = copy; else paddocks.unshift(copy);
+    const ok = store.set(K.paddocks, paddocks);
+    renderSaved(); renderResult();
+    toast(ok ? `Saved ${cur.name || "paddock"}` : "Couldn't save — this browser's storage is full or blocked. Try removing some photos.");
+  });
+
+  $("newPaddock").addEventListener("click", () => {
+    cur = blankPaddock(cur.crop);
+    persist(); renderAll();
+    $("paddock").focus();
+  });
+
+  $("saved").addEventListener("click", (e) => {
+    const open = e.target.closest("[data-open]");
+    const del = e.target.closest("[data-del-paddock]");
+    const yes = e.target.closest("[data-del-yes]");
+    const no = e.target.closest("[data-del-no]");
+    if (open) {
+      const p = paddocks.find((x) => x.id === open.dataset.open);
+      if (p) { cur = JSON.parse(JSON.stringify(p)); persist(); renderAll(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    } else if (del) {
+      pendingDelete = del.dataset.delPaddock; renderSaved();
+    } else if (yes) {
+      paddocks = paddocks.filter((p) => p.id !== yes.dataset.delYes);
+      pendingDelete = null; store.set(K.paddocks, paddocks); renderSaved(); renderResult();
+    } else if (no) {
+      pendingDelete = null; renderSaved();
+    }
+  });
+
+  // Photos are shrunk before storing so a handful fit in browser storage.
+  function addPhotos(files) {
+    [...files].forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          const max = 720;
+          const s = Math.min(1, max / Math.max(img.width, img.height));
+          const cv = document.createElement("canvas");
+          cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s);
+          cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+          cur.photos.push(cv.toDataURL("image/jpeg", 0.72));
+          if (!store.set(K.current, cur)) { cur.photos.pop(); toast("Photo not kept — browser storage is full."); }
+          renderPhotos();
+        };
+        img.src = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+  $("camera").addEventListener("change", (e) => { addPhotos(e.target.files); e.target.value = ""; });
+  $("library").addEventListener("change", (e) => { addPhotos(e.target.files); e.target.value = ""; });
+  $("photos").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-del-photo]");
+    if (!b) return;
+    cur.photos.splice(+b.dataset.delPhoto, 1); persist(); renderPhotos();
+  });
+
+  // Printing only works when the page is opened directly, not inside an embedded viewer.
+  let framed = false;
+  try { framed = window.self !== window.top; } catch (e) { framed = true; }
+  $("printRow").hidden = framed;
+  $("printBtn").addEventListener("click", () => { buildReport(); window.print(); });
+  window.addEventListener("beforeprint", buildReport);
+
+  function buildReport() {
+    const list = paddocks.length ? paddocks : [cur];
+    const rows = list.map((p) => {
+      const y = paddockYield(p);
+      return `<tr><td>${esc(p.name || "Unnamed paddock")}</td><td>${CROPS[p.crop].name}</td>
+        <td class="n">${fmt(p.area, 1)}</td><td class="n">${fmt(y, 2)}</td>
+        <td class="n">${fmt(bagsPerAc(y, p.crop), 1)}</td><td class="n">${p.area > 0 ? fmt(y * p.area, 1) : "–"}</td>
+        <td class="n">${p.tests.length || 1}</td></tr>`;
+    }).join("");
+    const total = list.reduce((s, p) => s + (p.area > 0 ? paddockYield(p) * p.area : 0), 0);
+    $("report").innerHTML = `
+      <p>${esc(settings.company || "")}</p>
+      <h1>${esc(settings.farm || "Yield estimate")}</h1>
+      <p>Printed ${new Date().toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" })}</p>
+      <table><thead><tr><th>Paddock</th><th>Crop</th><th class="n">ha</th><th class="n">t/ha</th><th class="n">bags/ac</th><th class="n">Tonnes</th><th class="n">Tests</th></tr></thead>
+      <tbody>${rows}</tbody>
+      <tfoot><tr><th colspan="5">Farm total</th><th class="n">${fmt(total, 1)}</th><th></th></tr></tfoot></table>
+      <p style="margin-top:16px;font-size:10pt">Yield = heads/m² × grains/head × thousand grain weight (g) ÷ 100,000, less harvest loss. Bags are 3 bushels. Estimates only.</p>`;
+  }
+
+  renderAll();
+
+  // Offline support: cache the app so it opens with no signal once it has loaded once.
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+})();
+</script>
+</body>
+</html>
